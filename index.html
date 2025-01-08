@@ -52,10 +52,10 @@
                     // Use target _system for opening in the external browser in some environments
                     if (navigator.userAgent.match(/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i)) {
                         // If it's a standalone PWA on iOS
-                        window.open(url, '_blank', 'noopener,noreferrer');
+                        window.open(url, '_system', 'noopener,noreferrer'); // Changed to _system
                     } else {
                         // For other environments
-                        window.location.href = url;
+                        window.location.href = url; 
                     }
                 });
             });
@@ -68,4 +68,3 @@
     <a href="https://www.example.com" class="external-link">Open in External Browser</a>
 </body>
 </html>
-
