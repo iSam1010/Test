@@ -28,7 +28,7 @@
   /* TOP BAR — full-bleed, sticky, responsive */
   .topbar{
     position:sticky; top:0; left:0; right:0; z-index:10000;
-    width:100vw; margin-left:calc(50% - 50vw); /* force to viewport edges even when zoomed */
+    width:100vw; margin-left:calc(50% - 50vw);
     background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
     backdrop-filter:saturate(140%) blur(6px);
     border-bottom:1px solid var(--border);
@@ -48,17 +48,28 @@
   .tabs::-webkit-scrollbar{display:none}
   .tab{padding:8px 14px; border-radius:999px; background:rgba(127,127,127,.12); cursor:pointer; user-select:none; transition:all .2s; white-space:nowrap;}
   .tab.active{background:linear-gradient(180deg, var(--accent), #1d4ed8); color:#fff; box-shadow:0 6px 20px rgba(59,130,246,.35);}
+
+  /* Mode pill */
   .mode-toggle{
     display:inline-flex; align-items:center; gap:8px;
     background:linear-gradient(180deg, #334155, #1f2937); color:#fff;
     padding:8px 12px; border-radius:999px; cursor:pointer; user-select:none;
     border:1px solid var(--border); box-shadow:0 8px 24px var(--btn-shadow);
-    flex:0 0 auto; margin-left:auto;
+    flex:0 0 auto;
   }
   html[data-theme="light"] .mode-toggle{ background:linear-gradient(180deg, #e2e8f0, #cbd5e1); color:#0b1227; }
   .mode-dot{width:18px; height:18px; border-radius:999px; background:#111827;}
   html[data-theme="light"] .mode-dot{ background:#fff; }
   .mode-label{font-weight:700; font-size:.9rem;}
+
+  /* Speaker icon button */
+  .icon-btn{
+    width:40px; height:40px; border-radius:999px; border:1px solid var(--border);
+    background:linear-gradient(180deg, #334155, #1f2937); color:#fff; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); flex:0 0 auto;
+  }
+  html[data-theme="light"] .icon-btn{ background:linear-gradient(180deg, #e2e8f0, #cbd5e1); color:#0b1227; }
 
   .panel{display:none;} .panel.active{display:block;}
 
@@ -189,6 +200,11 @@
       <div class="tab active" data-tab="scoring">Scoring</div>
       <div class="tab" data-tab="leaderboard">Leaderboard</div>
     </div>
+
+    <!-- Speaker mute/unmute -->
+    <button id="voiceBtn" class="icon-btn" title="Toggle voice" aria-label="Toggle voice">🔊</button>
+
+    <!-- Theme toggle -->
     <div id="modeToggle" class="mode-toggle" title="Toggle theme">
       <div class="mode-dot"></div><span class="mode-label" id="modeLabel">Dark</span>
     </div>
@@ -383,8 +399,32 @@ function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); 
 applyTheme(stored);
 $('#modeToggle').onclick = ()=>{ const t = (document.documentElement.getAttribute('data-theme')==='dark') ? 'light':'dark'; localStorage.setItem(THEME_KEY, t); applyTheme(t); };
 
+/* Voice (per device) */
+const VOX_KEY='dm_voice_on';
+let voiceOn = JSON.parse(localStorage.getItem(VOX_KEY) ?? 'true');
+function updateVoiceBtn(){
+  const b = $('#voiceBtn');
+  b.textContent = voiceOn ? '🔊' : '🔇';
+  b.setAttribute('aria-pressed', String(voiceOn));
+  b.title = voiceOn ? 'Mute voice' : 'Unmute voice';
+}
+function speakTotal(total){
+  if(!voiceOn) return;
+  try{
+    window.speechSynthesis.cancel();
+    const msg = new SpeechSynthesisUtterance(total>0 ? String(total) : 'no score');
+    msg.rate = 1; msg.pitch = 1; msg.volume = 1;
+    const voices = speechSynthesis.getVoices();
+    const en = voices.find(v => /en-GB/i.test(v.lang)) || voices.find(v=>/en/i.test(v.lang)) || voices[0];
+    if(en) msg.voice = en;
+    speechSynthesis.speak(msg);
+  }catch(e){ /* ignore */ }
+}
+$('#voiceBtn').onclick = ()=>{ voiceOn = !voiceOn; localStorage.setItem(VOX_KEY, JSON.stringify(voiceOn)); updateVoiceBtn(); };
+updateVoiceBtn();
+
 /* Storage */
-const LS='dm_countup_state_clean_v14';
+const LS='dm_countup_state_clean_v16';
 const LSB='dm_board_players_v1';
 function saveLocal(){ localStorage.setItem(LS, JSON.stringify({goal, players, throwOrder, currentIndex, showExtra, actionStack, currentThrowerId})); }
 function loadLocal(){
@@ -446,8 +486,7 @@ function saveBoard(){ localStorage.setItem(LSB, JSON.stringify(boardPlayers||[])
 function buildBoardList(){
   boardList.innerHTML='';
   Object.keys(players).forEach(id=>{
-    const wrap=document.createElement('label'); wrap.style.display='flex'; align='center';
-    wrap.style.alignItems='center'; wrap.style.gap='8px';
+    const wrap=document.createElement('label'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='8px';
     wrap.style.padding='6px 8px'; wrap.style.border='1px solid var(--border)'; wrap.style.borderRadius='10px'; wrap.style.background='var(--chip)';
     const cb=document.createElement('input'); cb.type='checkbox'; cb.value=id; cb.checked = boardPlayers.length ? boardPlayers.includes(id) : true;
     const span=document.createElement('span'); span.textContent=players[id].name;
@@ -691,6 +730,9 @@ submitBtn.onclick=()=>{
 
   actionStack.push({ playerId: pid, darts: visit.slice(), total: add, dartsUsed, plus100, max180 });
   saveLocal();
+
+  /* Voice callout - speak total or "no score" */
+  speakTotal(add);
 
   advanceToNextThrower(pid);
 };
