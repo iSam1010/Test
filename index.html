@@ -317,7 +317,15 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size:1.15rem; text-align:right;
   }
+/* Force board-player names to be visible (iPad Safari fix) */
+#boardList label {
+  color: var(--text) !important;
+}
 
+#boardList label span {
+  color: var(--text) !important;
+  font-weight: 600;
+}
   .mask{
     position:fixed; inset:0; display:none; align-items:center;
     justify-content:center; z-index:5000;
