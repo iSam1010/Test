@@ -492,7 +492,7 @@ function buildBoardList(){
   Object.keys(players).forEach(id=>{
     const wrap=document.createElement('label'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='8px';
     wrap.style.padding='6px 8px'; wrap.style.border='1px solid var(--border)'; wrap.style.borderRadius='10px'; wrap.style.background='var(--chip)';
-    const cb=document.createElement('input'); cb.type='checkbox'; cb.value=id; cb.checked = boardPlayers.length ? boardPlayers.includes(id) : true;
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.value=id; cb.checked = boardPlayers.length > 0 && boardPlayers.includes(id);
     const span=document.createElement('span'); span.textContent=players[id].name;
     wrap.append(cb, span); boardList.appendChild(wrap);
   });
