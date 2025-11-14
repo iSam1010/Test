@@ -1048,9 +1048,10 @@ function renderPlayers(){
       setPlayerScore(p.id, newTotal);
     });
 
-    actions.append(addBtn, editBtn);
-    tr.querySelector('[data-photo]').onclick=()=> pickPhotoFor(p.id);
-    ptable.appendChild(tr);
+   actions.append(addBtn, editBtn);
+// No photo click handler here – inline leaderboard is view-only
+ptable.appendChild(tr);
+
   });
 
   refreshThrowerSelect();
