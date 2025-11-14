@@ -440,18 +440,22 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-  // TODO: Replace with your real Firebase config
+  // Firebase config for your project
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    // storageBucket is optional here because we are only using Firestore + base64 photos
-    // storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    apiKey: "AIzaSyC-AJyw3ApZJMHgJzoAAd0zsZiPOYykbVM",
+    authDomain: "darts-marathon.firebaseapp.com",
+    projectId: "darts-marathon",
+    storageBucket: "darts-marathon.appspot.com",
+    messagingSenderId: "408122809544",
+    appId: "1:408122809544:web:76035b44ea2947e6f219fd"
   };
+
+  // Initialise Firebase using COMPAT mode
   if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   }
 </script>
+
 
 <script>
 /* ===== Core state ===== */
