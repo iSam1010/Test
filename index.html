@@ -172,32 +172,18 @@
   .tv-progress{height:20px; border-radius:999px; background:var(--chip); border:1px solid var(--border); overflow:hidden; margin-top:8px;}
   .tv-progress .bar{height:100%;}
   .tv-grid{width:100%; border-collapse:separate; border-spacing:0 6px; margin-top:10px;}
-  .tv-grid thead th{padding:6px 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;}
-    /* Line PLAYER header up above the name text (avatar + gap) */
-  .tv-grid thead th.tv-player-head{
-    padding:6px 8px 6px 54px !important; /* 8 cell padding + 36 avatar + 10 gap */
+   .tv-grid thead th{
+    padding:6px 8px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.05em;
   }
-function buildTVHeader(){
-  const base = [
-    { text: '#',      cls: 'tv-rank' },
-    { text: 'Player', cls: 'tv-player-head' },
-    { text: 'Score',  cls: 'tv-num' }
-  ];
-  const extra = [
-    { text: 'Darts', cls: 'tv-num' },
-    { text: '100+',  cls: 'tv-num' },
-    { text: '180',   cls: 'tv-num' },
-    { text: 'Avg',   cls: 'tv-num' }
-  ];
 
-  $('#tvHeadRow').innerHTML = '';
-  (showExtra ? base.concat(extra) : base).forEach(col => {
-    const th = document.createElement('th');
-    th.className = col.cls;
-    th.textContent = col.text;
-    $('#tvHeadRow').appendChild(th);
-  });
-}
+  /* Line PLAYER header up above the name text (avatar + gap) */
+  .tv-grid thead th.tv-player-head{
+    text-align:left;
+    padding-left:54px; /* 8 cell padding + 36 avatar + 10 gap */
+  }
 
 
   .tv-grid tbody tr{background:linear-gradient(180deg, var(--row), var(--row2)); border:1px solid var(--border);}
