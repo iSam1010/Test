@@ -89,6 +89,7 @@
   button{
     border:none; border-radius:999px; padding:10px 16px; font-weight:700; cursor:pointer; color:#fff;
     background:linear-gradient(180deg, var(--btn-bg), var(--btn-bg2)); box-shadow:0 8px 24px var(--btn-shadow);
+    touch-action:manipulation;
   }
   button.secondary{background:linear-gradient(180deg, #334155, #1f2937);}
   html[data-theme="light"] button.secondary{background:linear-gradient(180deg, #cbd5e1, #94a3b8); color:#0b1227;}
@@ -149,15 +150,56 @@
   }
   .order-item .name{flex:1; min-width:0; display:flex; align-items:center; gap:8px;}
   .order-item .btns{display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:55vw;}
-  .order-item .btns button{ padding:8px 12px; white-space:nowrap; }
+    .order-item .btns button{ padding:8px 12px; white-space:nowrap; }
+
+  /* Smaller buttons for photo controls */
+  .order-item .btns button.player-photo-btn,
+  .order-item .btns button.player-photo-delete-btn{
+    padding:6px 10px;
+    font-size:.85rem;
+  }
+    /* Smaller edit/delete icons next to player name */
+  .order-item .name button{
+    padding:6px 10px;
+    font-size:.85rem;
+  }
+
 
   .tv-wrap{padding:8px;}
   .tv-title{display:flex; align-items:center; justify-content:space-between; gap:10px;}
   .tv-title h2{margin:0;}
+  .tv-score-big{margin-top:8px; font-size:1.6rem; font-weight:800; text-align:right;}
   .tv-progress{height:20px; border-radius:999px; background:var(--chip); border:1px solid var(--border); overflow:hidden; margin-top:8px;}
   .tv-progress .bar{height:100%;}
   .tv-grid{width:100%; border-collapse:separate; border-spacing:0 6px; margin-top:10px;}
   .tv-grid thead th{padding:6px 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;}
+    /* Line PLAYER header up above the name text (avatar + gap) */
+  .tv-grid thead th.tv-player-head{
+    padding:6px 8px 6px 54px !important; /* 8 cell padding + 36 avatar + 10 gap */
+  }
+function buildTVHeader(){
+  const base = [
+    { text: '#',      cls: 'tv-rank' },
+    { text: 'Player', cls: 'tv-player-head' },
+    { text: 'Score',  cls: 'tv-num' }
+  ];
+  const extra = [
+    { text: 'Darts', cls: 'tv-num' },
+    { text: '100+',  cls: 'tv-num' },
+    { text: '180',   cls: 'tv-num' },
+    { text: 'Avg',   cls: 'tv-num' }
+  ];
+
+  $('#tvHeadRow').innerHTML = '';
+  (showExtra ? base.concat(extra) : base).forEach(col => {
+    const th = document.createElement('th');
+    th.className = col.cls;
+    th.textContent = col.text;
+    $('#tvHeadRow').appendChild(th);
+  });
+}
+
+
   .tv-grid tbody tr{background:linear-gradient(180deg, var(--row), var(--row2)); border:1px solid var(--border);}
   .tv-grid td{padding:10px 8px;}
   .tv-rank{width:50px; text-align:center; font-weight:800; font-size:1.1rem;}
@@ -187,10 +229,6 @@
     button{padding:9px 14px}
     .brand h1{font-size:1rem;}
   }
-  /* Disable tap-to-zoom everywhere but keep pinch zoom */
-html, body {
-  touch-action: pan-x pan-y;
-}
 </style>
 </head>
 <body>
@@ -329,6 +367,7 @@ html, body {
         <h2>Leaderboard</h2>
         <label class="small"><input type="checkbox" id="toggleExtra" style="vertical-align:middle; margin-right:6px;"> Show extra stats</label>
       </div>
+      <div id="tvScoreBig" class="tv-score-big"></div>
       <div class="tv-progress"><div class="bar" id="tvBar"></div></div>
       <div class="small" id="tvSummary" style="text-align:right; margin-top:6px;"></div>
 
@@ -371,7 +410,7 @@ html, body {
 <div id="boardMask" class="mask" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="boardTitle">
     <h3 id="boardTitle">Select board players (this device)</h3>
-    <div id="boardList" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;"></div>
+    <div id="boardList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px; max-height:60vh; overflow-y:auto;"></div>
     <div class="modal-row" style="margin-top:12px;">
       <button id="boardClear" class="secondary" type="button">Clear</button>
       <button id="boardSave" type="button">Save players</button>
@@ -419,8 +458,11 @@ function speakTotal(total){
     const msg = new SpeechSynthesisUtterance(total>0 ? String(total) : 'no score');
     msg.rate = 1; msg.pitch = 1; msg.volume = 1;
     const voices = speechSynthesis.getVoices();
-    const en = voices.find(v => /en-GB/i.test(v.lang)) || voices.find(v=>/en/i.test(v.lang)) || voices[0];
-    if(en) msg.voice = en;
+    let chosen = voices.find(v => /jamie/i.test(v.name)) ||
+                 voices.find(v => /en-GB/i.test(v.lang)) ||
+                 voices.find(v => /en/i.test(v.lang)) ||
+                 voices[0];
+    if(chosen) msg.voice = chosen;
     speechSynthesis.speak(msg);
   }catch(e){ /* ignore */ }
 }
@@ -470,7 +512,7 @@ const scorePlayerSel=$('#scorePlayer'), skipBtn=$('#skipBtn');
 const segGrid=$('#segGrid'), bullRow=$('#bullRow'), tS=$('#tS'), tD=$('#tD'), tT=$('#tT');
 const dEls=[$('#d1'),$('#d2'),$('#d3')], vsum=$('#vsum'); const undoVisitBtn=$('#undoVisit'), submitBtn=$('#submit'), nudgeEl=$('#nudge');
 const ptable=$('#ptable'), teamSummarySmall=$('#teamSummarySmall');
-const tvBar=$('#tvBar'), tvSummary=$('#tvSummary'), tvBody=$('#tvBody'), tvHeadRow=$('#tvHeadRow'), toggleExtra=$('#toggleExtra');
+const tvBar=$('#tvBar'), tvScoreBig=$('#tvScoreBig'), tvSummary=$('#tvSummary'), tvBody=$('#tvBody'), tvHeadRow=$('#tvHeadRow'), toggleExtra=$('#toggleExtra');
 const boardMask=$('#boardMask'), boardList=$('#boardList'), boardSave=$('#boardSave'), boardCancel=$('#boardCancel'), boardClear=$('#boardClear'), boardCount=$('#boardCount');
 
 /* Helpers */
@@ -491,7 +533,7 @@ function buildBoardList(){
   boardList.innerHTML='';
   Object.keys(players).forEach(id=>{
     const wrap=document.createElement('label'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='8px';
-    wrap.style.padding='6px 8px'; wrap.style.border='1px solid var(--border)'; wrap.style.borderRadius='10px'; wrap.style.background='var(--chip)';
+    wrap.style.padding='6px 8px'; wrap.style.border='1px solid var(--border)'; wrap.style.borderRadius='10px'; wrap.style.background='var(--chip)'; wrap.style.width='100%';
     const cb=document.createElement('input'); cb.type='checkbox'; cb.value=id; cb.checked = boardPlayers.length > 0 && boardPlayers.includes(id);
     const span=document.createElement('span'); span.textContent=players[id].name;
     wrap.append(cb, span); boardList.appendChild(wrap);
@@ -509,11 +551,23 @@ function rosterIds(){
 
 /* Rendering */
 function updateBars(){
-  const total=teamTotal(), darts=teamDarts(); const pct=Math.min(100, goal>0 ? (total/goal)*100 : 0);
-  bar.style.width=pct+'%'; summary.innerHTML = `<span><b>Team total:</b> ${fmt(total)} pts</span><span><b>Target:</b> ${fmt(goal)} pts</span><span><b>Darts:</b> ${fmt(darts)}</span><span><b>Progress:</b> ${pct.toFixed(1)}%</span>`;
+  const total = teamTotal(), darts = teamDarts();
+  const pct = Math.min(100, goal > 0 ? (total / goal) * 100 : 0);
+
+  bar.style.width = pct + '%';
+  summary.innerHTML = `<span><b>Team total:</b> ${fmt(total)} pts</span><span><b>Target:</b> ${fmt(goal)} pts</span><span><b>Darts:</b> ${fmt(darts)}</span><span><b>Progress:</b> ${pct.toFixed(1)}%</span>`;
   teamSummarySmall.textContent = `Team: ${fmt(total)} pts • ${fmt(darts)} darts`;
-  tvBar.style.width=pct+'%'; tvSummary.textContent = `${fmt(total)} pts • ${fmt(darts)} darts • ${pct.toFixed(1)}% of ${fmt(goal)}`;
+
+  tvBar.style.width = pct + '%';
+  if (tvScoreBig) tvScoreBig.textContent = `${fmt(total)} pts`;
+
+  if (showExtra) {
+    tvSummary.textContent = `${fmt(darts)} darts • ${pct.toFixed(1)}% of ${fmt(goal)}`;
+  } else {
+    tvSummary.textContent = `${pct.toFixed(1)}% of ${fmt(goal)}`;
+  }
 }
+
 
 function renderPlayers(){
   const arr = Object.entries(players).map(([id,p])=>({id, ...p, score:p.score||0, darts:p.darts||0, tonPlus:p.tonPlus||0, oneEighties:p.oneEighties||0}))
@@ -575,10 +629,26 @@ function refreshThrowerSelect(){
 }
 
 function buildTVHeader(){
-  const base=[{text:'#',cls:'tv-rank'},{text:'Player',cls:''},{text:'Score',cls:'tv-num'}];
-  const extra=[{text:'Darts',cls:'tv-num'},{text:'100+',cls:'tv-num'},{text:'180',cls:'tv-num'},{text:'Avg',cls:'tv-num'}];
-  $('#tvHeadRow').innerHTML=''; (showExtra? base.concat(extra):base).forEach(c=>{ const th=document.createElement('th'); th.className=c.cls; th.textContent=c.text; $('#tvHeadRow').appendChild(th); });
+  const base = [
+    { text:'#',     cls:'tv-rank' },
+    { text:'Player', cls:'tv-player-head' },
+    { text:'Score',  cls:'tv-num' }
+  ];
+  const extra = [
+    { text:'Darts', cls:'tv-num' },
+    { text:'100+',  cls:'tv-num' },
+    { text:'180',   cls:'tv-num' },
+    { text:'Avg',   cls:'tv-num' }
+  ];
+  $('#tvHeadRow').innerHTML = '';
+  (showExtra ? base.concat(extra) : base).forEach(c => {
+    const th = document.createElement('th');
+    th.className = c.cls;
+    th.textContent = c.text;
+    $('#tvHeadRow').appendChild(th);
+  });
 }
+
 function renderTV(sortedArr){
   buildTVHeader();
   const arr=sortedArr||Object.entries(players).map(([id,p])=>({id,...p,score:p.score||0,darts:p.darts||0,tonPlus:p.tonPlus||0,oneEighties:p.oneEighties||0}))
@@ -593,14 +663,15 @@ function renderTV(sortedArr){
   });
 }
 
-/* Order list (setup) with name edit */
+/* Order list (setup) with name edit and delete */
+/* Order list (setup) with name edit and delete */
 function renderOrderList(){
   orderList.innerHTML='';
   throwOrder.forEach((id,idx)=>{
     if(!players[id]) return;
     const li=document.createElement('li'); li.className='order-item';
     const av=players[id].photo? `<span class="avatar" style="background-image:url(${players[id].photo})" data-edit-photo="${id}"></span>` : `<span class="avatar" data-edit-photo="${id}">${(players[id].name||'?')[0].toUpperCase()}</span>`;
-    li.innerHTML = `${av}<div class="name"><span id="nm-${id}">${players[id].name}</span><button class="secondary" type="button" data-edit-name="${id}" title="Edit name">✏️</button></div><div class="btns"></div>`;
+    li.innerHTML = `${av}<div class="name"><span id="nm-${id}">${players[id].name}</span><button class="secondary" type="button" data-edit-name="${id}" title="Edit name">✏️</button><button class="warn" type="button" data-delete-player="${id}" title="Delete player">🗑️</button></div><div class="btns"></div>`;
     const btns=li.querySelector('.btns');
 
     const up=document.createElement('button'); up.textContent='↑'; up.className='secondary'; up.type='button';
@@ -608,11 +679,17 @@ function renderOrderList(){
     up.onclick=()=>{ if(idx===0) return; [throwOrder[idx-1],throwOrder[idx]]=[throwOrder[idx],throwOrder[idx-1]]; persistOrder(); renderPlayers(); };
     down.onclick=()=>{ if(idx===throwOrder.length-1) return; [throwOrder[idx+1],throwOrder[idx]]=[throwOrder[idx],throwOrder[idx+1]]; persistOrder(); renderPlayers(); };
 
-    const photoBtn=document.createElement('button'); photoBtn.textContent='Photo'; photoBtn.className='secondary'; photoBtn.type='button';
+    const photoBtn=document.createElement('button');
+    photoBtn.textContent='Photo';
+    photoBtn.className='secondary player-photo-btn';
+    photoBtn.type='button';
     photoBtn.onclick=()=> pickPhotoFor(id);
     li.querySelector('[data-edit-photo]').onclick=()=> pickPhotoFor(id);
 
-    const rem=document.createElement('button'); rem.textContent='Remove'; rem.className='warn'; rem.type='button';
+    const rem=document.createElement('button');
+    rem.textContent='Delete Photo';
+    rem.className='warn player-photo-delete-btn';
+    rem.type='button';
     rem.onclick=()=> removePlayerPhoto(id);
 
     /* name edit */
@@ -627,10 +704,31 @@ function renderOrderList(){
       renderPlayers();
     };
 
+    /* delete player */
+    const delBtn = li.querySelector('[data-delete-player]');
+    delBtn.onclick=()=>{
+      const p = players[id];
+      if(!p) return;
+      if(!confirm(`Delete player "${p.name}" and all their scores?`)) return;
+      delete players[id];
+      throwOrder = throwOrder.filter(pid=>pid!==id);
+      boardPlayers = (boardPlayers||[]).filter(pid=>pid!==id);
+      saveBoard();
+      if(currentThrowerId===id){
+        const pool = rosterIds();
+        setThrower(pool[0] || null);
+      }
+      saveLocal();
+      renderPlayers();
+      renderOrderList();
+      updateBars();
+    };
+
     btns.append(up,down,photoBtn,rem);
     orderList.appendChild(li);
   });
 }
+
 
 /* Data ops */
 function setGoal(v){ goal=v; updateBars(); saveLocal(); }
@@ -742,7 +840,13 @@ submitBtn.onclick=()=>{
 };
 
 /* TV toggle */
-toggleExtra.onchange=()=>{ showExtra=toggleExtra.checked; saveLocal(); renderTV(); };
+toggleExtra.onchange = () => {
+  showExtra = toggleExtra.checked;
+  saveLocal();
+  renderTV();
+  updateBars(); // refresh summary so darts only shows when extra stats are on
+};
+
 function syncToggle(){ toggleExtra.checked = !!showExtra; }
 
 /* Init */
