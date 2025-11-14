@@ -445,7 +445,7 @@
     apiKey: "AIzaSyC-AJyw3ApZJMHgJzoAAd0zsZiPOYykbVM",
     authDomain: "darts-marathon.firebaseapp.com",
     projectId: "darts-marathon",
-    storageBucket: "darts-marathon.appspot.com",
+    storageBucket: "darts-marathon.firebasestorage.app",
     messagingSenderId: "408122809544",
     appId: "1:408122809544:web:76035b44ea2947e6f219fd"
   };
@@ -834,14 +834,20 @@ function attachCloudListener(){
       renderBoardCount();
 
       updateModeBadge(null, true, true); // now safely "synced"
-    }, err => {
+        }, err => {
       console.warn('Cloud listener error', err);
-      nudge('Lost cloud connection, staying in local mode.');
+
+      // Show the real error so we know what's going on
+      const code = err && err.code ? err.code : 'unknown';
+      const msg  = err && err.message ? err.message : '';
+      nudge(`Cloud error (${code}). Using local mode.`);
+      
       syncMode = 'local';
       currentEventId = null;
       detachCloudListener();
       updateModeBadge(null, false, false);  // back to local / not synced
     });
+
   }catch(e){
     console.error(e);
     nudge('Could not connect to cloud. Staying local.');
