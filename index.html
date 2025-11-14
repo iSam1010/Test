@@ -215,6 +215,29 @@
     button{padding:9px 14px}
     .brand h1{font-size:1rem;}
   }
+  /* Board player list layout fix */
+#boardList {
+  align-items: stretch;
+}
+
+#boardList .board-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--chip);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#boardList .board-row span {
+  flex: 1;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
 </style>
 </head>
 <body>
@@ -518,15 +541,8 @@ function saveBoard(){ localStorage.setItem(LSB, JSON.stringify(boardPlayers||[])
 function buildBoardList(){
   boardList.innerHTML = '';
   Object.keys(players).forEach(id => {
-    const wrap = document.createElement('label');
-    wrap.style.display = 'flex';
-    wrap.style.alignItems = 'center';
-    wrap.style.gap = '8px';
-    wrap.style.padding = '6px 8px';
-    wrap.style.border = '1px solid var(--border)';
-    wrap.style.borderRadius = '10px';
-    wrap.style.background = 'var(--chip)';
-    wrap.style.width = '100%';
+    const row = document.createElement('div');
+    row.className = 'board-row';
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
@@ -535,14 +551,17 @@ function buildBoardList(){
 
     const span = document.createElement('span');
     span.textContent = players[id].name;
-    span.style.flex = '1';
-    span.style.whiteSpace = 'normal';
-    span.style.overflowWrap = 'break-word';
 
-    wrap.append(cb, span);
-    boardList.appendChild(wrap);
+    // Clicking anywhere on the row toggles the checkbox
+    row.addEventListener('click', (e) => {
+      if (e.target !== cb) cb.checked = !cb.checked;
+    });
+
+    row.append(cb, span);
+    boardList.appendChild(row);
   });
 }
+
 
 function renderBoardCount(){
   boardCount.textContent = (boardPlayers && boardPlayers.length>0) ? `${boardPlayers.length} selected` : 'All players';
