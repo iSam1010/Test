@@ -1,4 +1,4 @@
-<!-- Created by Sam Harper -->
+<!-- Copyright © [17/11/2025]. [Sam Harper]. All rights reserved. -->
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -718,6 +718,15 @@ const startMask=$('#startMask');
 const pwMask=$('#pwMask');
 const pwInput=$('#pwInput'), pwSubmit=$('#pwSubmit'), pwCancel=$('#pwCancel'), pwError=$('#pwError');
 let pwNextAction=null;
+
+// Enable Enter / ✓ to submit password
+pwInput.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    pwSubmit.click();
+  }
+});
+
 function openPasswordModal(nextAction){
   pwNextAction=nextAction||null;
   pwInput.value='';
@@ -726,6 +735,7 @@ function openPasswordModal(nextAction){
   pwMask.setAttribute('aria-hidden','false');
   setTimeout(()=>pwInput.focus(),10);
 }
+
 function closePasswordModal(){
   pwMask.classList.remove('show');
   pwMask.setAttribute('aria-hidden','true');
@@ -789,10 +799,30 @@ startCodeInput.addEventListener('input', ()=>{
   startJoinBtn.disabled = !hasCode;
 });
 
+// Allow Enter / tick to submit start modal code
+startCodeInput.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    if (!startJoinBtn.disabled){
+      startJoinBtn.click();
+    }
+  }
+});
+
+
 // Enable/disable Setup tab Join based on input
 eventIdInput.addEventListener('input', ()=>{
   const hasCode = !!eventIdInput.value.trim();
   joinBtn.disabled = !hasCode;
+});
+// Allow Enter / tick to submit setup tab code
+eventIdInput.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    if (!joinBtn.disabled){
+      joinBtn.click();
+    }
+  }
 });
 
 
@@ -1251,22 +1281,30 @@ function updateBars(){
 }
 
 function renderPlayers(){
+  // Clean up any ghost players that are not in throwOrder
+  cleanupOrphanPlayers();
+
   const arr = Object.entries(players).map(([id,p])=>({
-      id, ...p,
-      score:p.score||0,
-      darts:p.darts||0,
-      tonPlus:p.tonPlus||0,
-      oneEighties:p.oneEighties||0
+      id,
+      ...p,
+      score:       p.score       || 0,
+      darts:       p.darts       || 0,
+      tonPlus:     p.tonPlus     || 0,
+      oneEighties: p.oneEighties || 0
     }))
     .sort((a,b)=> (b.score!==a.score) ? (b.score-a.score) : a.name.localeCompare(b.name));
 
-  ptable.innerHTML='';
-  arr.forEach((p,idx)=>{
-    const tr=document.createElement('tr');
+  // Clear inline leaderboard body
+  ptable.innerHTML = '';
+
+  arr.forEach((p, idx)=>{
+    const tr  = document.createElement('tr');
     const avg = threeDA(p);
+
     const avatar = p.photo
       ? `<span class="avatar" style="background-image:url(${p.photo})" data-photo="${p.id}"></span>`
       : `<span class="avatar" data-photo="${p.id}">${(p.name||'?')[0].toUpperCase()}</span>`;
+
     tr.innerHTML = `
       <td class="rank">${idx+1}</td>
       <td>${avatar}${p.name}</td>
@@ -1276,85 +1314,99 @@ function renderPlayers(){
       <td class="num mono">${fmt(p.oneEighties)}</td>
       <td class="num mono">${avg.toFixed(1)}</td>
       <td><input class="add-inp" type="number" min="0" placeholder="e.g. 60" /></td>
-      <td></td>`;
-    const inp=tr.querySelector('input');
-    const actions=tr.lastElementChild;
+      <td></td>
+    `;
 
-   addBtn.onclick = () => openPasswordModal(() => {
-  const raw = inp.value;
-  const v = parseInt(raw, 10);
-  if (isNaN(v) || v <= 0) {
-    inp.value = '';
-    inp.focus();
-    return;
-  }
-  if (!confirm(`Add +${v} points to ${p.name}?`)) return;
+    const inp     = tr.querySelector('input');
+    const actions = tr.lastElementChild;
 
-  const current   = players[p.id]?.score || 0;
-  const newTotal  = current + v;
-  const skipCloud = true;
+    // --- Add to total button (atomic increment in cloud) ---
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = 'Add';
+    addBtn.className = 'secondary';
 
-  // 1) Local only – do NOT send full doc
-  setPlayerScore(p.id, newTotal, skipCloud);
-  inp.value = '';
+    addBtn.onclick = () => openPasswordModal(() => {
+      const raw = inp.value;
+      const v = parseInt(raw, 10);
+      if (isNaN(v) || v <= 0) {
+        inp.value = '';
+        inp.focus();
+        return;
+      }
+      if (!confirm(`Add +${v} points to ${p.name}?`)) return;
 
-  // 2) Cloud – atomic increment so it’s safe with other boards
-  if (eventRef) {
-    try {
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${p.id}.score`] = inc(v);
-      eventRef.set(updates, { merge: true });
-    } catch (e) {
-      console.warn('Cloud add-total failed', e);
-    }
-  }
-});
+      const current   = players[p.id]?.score || 0;
+      const newTotal  = current + v;
+      const skipCloud = true;
 
+      // 1) Local only - do NOT send full doc
+      setPlayerScore(p.id, newTotal, skipCloud);
+      inp.value = '';
+
+      // 2) Cloud - atomic increment so it’s safe with other boards
+      if (eventRef) {
+        try {
+          const inc = firebase.firestore.FieldValue.increment;
+          const updates = {};
+          updates[`players.${p.id}.score`] = inc(v);
+          eventRef.set(updates, { merge: true });
+        } catch (e) {
+          console.warn('Cloud add-total failed', e);
+        }
+      }
+    });
+
+    // --- Correct total button (set score via diff) ---
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = 'Set total';
+    editBtn.className = 'secondary';
 
     editBtn.onclick = () => openPasswordModal(() => {
-  const current = players[p.id]?.score || 0;
-  const v = prompt(`Set a new total score for ${p.name}. Current: ${current}`);
-  if (v == null) return;
+      const current = players[p.id]?.score || 0;
+      const v = prompt(`Set a new total score for ${p.name}. Current: ${current}`);
+      if (v == null) return;
 
-  const newTotal = parseInt(v, 10);
-  if (isNaN(newTotal) || newTotal < 0) {
-    nudge('Enter a valid non-negative number');
-    return;
-  }
-  if (!confirm(`Confirm set ${p.name} to ${newTotal} points?`)) return;
+      const newTotal = parseInt(v, 10);
+      if (isNaN(newTotal) || newTotal < 0) {
+        nudge('Enter a valid non-negative number');
+        return;
+      }
+      if (!confirm(`Confirm set ${p.name} to ${newTotal} points?`)) return;
 
-  const diff      = newTotal - current;
-  const skipCloud = true;
+      const diff      = newTotal - current;
+      const skipCloud = true;
 
-  // 1) Local only – clamp to the new total in the UI
-  setPlayerScore(p.id, newTotal, skipCloud);
+      // 1) Local only - clamp to the new total in the UI
+      setPlayerScore(p.id, newTotal, skipCloud);
 
-  // 2) Cloud – adjust by the difference, not overwrite the whole thing
-  if (eventRef && diff !== 0) {
-    try {
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${p.id}.score`] = inc(diff);
-      eventRef.set(updates, { merge: true });
-    } catch (e) {
-      console.warn('Cloud edit-total failed', e);
-    }
-  }
-});
+      // 2) Cloud - adjust by the difference, not overwrite the whole thing
+      if (eventRef && diff !== 0) {
+        try {
+          const inc = firebase.firestore.FieldValue.increment;
+          const updates = {};
+          updates[`players.${p.id}.score`] = inc(diff);
+          eventRef.set(updates, { merge: true });
+        } catch (e) {
+          console.warn('Cloud edit-total failed', e);
+        }
+      }
+    });
 
+    actions.append(addBtn, editBtn);
 
-   actions.append(addBtn, editBtn);
-// No photo click handler here – inline leaderboard is view-only
-ptable.appendChild(tr);
-
+    // Inline leaderboard is view-only for photos – no click handler here
+    ptable.appendChild(tr);
   });
 
+  // Keep everything else in sync with the same `players` map
   refreshThrowerSelect();
   renderTV(arr);
   renderOrderList();
   renderBoardCount();
 }
+
 
 function refreshThrowerSelect(){
   const pool = rosterIds();
@@ -1430,6 +1482,25 @@ function deletePlayerFromCloud(id){
     console.warn('Cloud player delete failed', e);
   }
 }
+
+function cleanupOrphanPlayers(){
+  // Any player not in throwOrder is an orphan (ghost)
+  const valid = new Set(throwOrder);
+  const orphans = Object.keys(players).filter(id => !valid.has(id));
+
+  if (!orphans.length) return;
+
+  orphans.forEach(id => {
+    // Remove locally
+    delete players[id];
+    // Remove from cloud doc so they can’t respawn
+    deletePlayerFromCloud(id);
+  });
+
+  // Persist the cleaned state locally (no extra cloud write)
+  saveLocalOnly();
+}
+
 
 
 /* Order list (setup) with name edit and delete */
@@ -1887,3 +1958,4 @@ init();
 </script>
 </body>
 </html>
+<!-- Copyright © [17/11/2025]. [Sam Harper]. All rights reserved. -->
