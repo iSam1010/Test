@@ -1665,7 +1665,16 @@ function setPlayerPhoto(id, dataUrl){
   renderPlayers();
 }
 
+function removePlayerPhoto(id){
+  if (!players[id]) return;
+  players[id].photo = null;
+  touchPlayer(id);
+  saveLocal();
+  renderPlayers();
+}
+
 function persistOrder(){ saveLocal(); }
+
 
 function pickPhotoFor(id){
   const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
@@ -1797,10 +1806,9 @@ skipBtn.onclick=()=>{
   advanceToNextThrower(currentThrowerId);
 };
 
-scorePlayerSel.onchange=()=>{
-  const pid=scorePlayerSel.value;
-  currentThrowerId = pid || null;
-  saveLocal();
+scorePlayerSel.onchange = () => {
+  const pid = scorePlayerSel.value || null;
+  setThrower(pid);
 };
 
 undoVisitBtn.onclick = () => {
