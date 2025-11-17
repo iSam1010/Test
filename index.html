@@ -1252,21 +1252,69 @@ function renderPlayers(){
     const inp=tr.querySelector('input');
     const actions=tr.lastElementChild;
 
-    const addBtn=document.createElement('button'); addBtn.textContent='Add'; addBtn.type='button';
-    addBtn.onclick=()=> openPasswordModal(()=> {
-      const v=parseInt(inp.value,10); if(isNaN(v)||v<=0){ inp.value=''; inp.focus(); return; }
-      if(!confirm(`Add +${v} points to ${p.name}?`)) return;
-      setPlayerScore(p.id, (players[p.id].score||0)+v); inp.value='';
-    });
+   addBtn.onclick = () => openPasswordModal(() => {
+  const raw = inp.value;
+  const v = parseInt(raw, 10);
+  if (isNaN(v) || v <= 0) {
+    inp.value = '';
+    inp.focus();
+    return;
+  }
+  if (!confirm(`Add +${v} points to ${p.name}?`)) return;
 
-    const editBtn=document.createElement('button'); editBtn.textContent='Edit total'; editBtn.className='secondary'; editBtn.style.marginLeft='6px'; editBtn.type='button';
-    editBtn.onclick=()=> openPasswordModal(()=> {
-      const v=prompt(`Set a new total score for ${p.name}. Current: ${players[p.id].score}`);
-      if(v==null) return; const newTotal=parseInt(v,10);
-      if(isNaN(newTotal)||newTotal<0) return nudge('Enter a valid non-negative number');
-      if(!confirm(`Confirm set ${p.name} to ${newTotal} points?`)) return;
-      setPlayerScore(p.id, newTotal);
-    });
+  const current   = players[p.id]?.score || 0;
+  const newTotal  = current + v;
+  const skipCloud = true;
+
+  // 1) Local only – do NOT send full doc
+  setPlayerScore(p.id, newTotal, skipCloud);
+  inp.value = '';
+
+  // 2) Cloud – atomic increment so it’s safe with other boards
+  if (eventRef) {
+    try {
+      const inc = firebase.firestore.FieldValue.increment;
+      const updates = {};
+      updates[`players.${p.id}.score`] = inc(v);
+      eventRef.set(updates, { merge: true });
+    } catch (e) {
+      console.warn('Cloud add-total failed', e);
+    }
+  }
+});
+
+
+    editBtn.onclick = () => openPasswordModal(() => {
+  const current = players[p.id]?.score || 0;
+  const v = prompt(`Set a new total score for ${p.name}. Current: ${current}`);
+  if (v == null) return;
+
+  const newTotal = parseInt(v, 10);
+  if (isNaN(newTotal) || newTotal < 0) {
+    nudge('Enter a valid non-negative number');
+    return;
+  }
+  if (!confirm(`Confirm set ${p.name} to ${newTotal} points?`)) return;
+
+  const diff      = newTotal - current;
+  const skipCloud = true;
+
+  // 1) Local only – clamp to the new total in the UI
+  setPlayerScore(p.id, newTotal, skipCloud);
+
+  // 2) Cloud – adjust by the difference, not overwrite the whole thing
+  if (eventRef && diff !== 0) {
+    try {
+      const inc = firebase.firestore.FieldValue.increment;
+      const updates = {};
+      updates[`players.${p.id}.score`] = inc(diff);
+      eventRef.set(updates, { merge: true });
+    } catch (e) {
+      console.warn('Cloud edit-total failed', e);
+    }
+  }
+});
+
 
    actions.append(addBtn, editBtn);
 // No photo click handler here – inline leaderboard is view-only
@@ -1343,6 +1391,19 @@ function renderTV(sortedArr){
   });
 }
 
+function deletePlayerFromCloud(id){
+  if (!eventRef || !firebase || !firebase.firestore) return;
+  try{
+    const del = firebase.firestore.FieldValue.delete();
+    const updates = {};
+    updates[`players.${id}`] = del;
+    eventRef.set(updates, { merge:true });
+  }catch(e){
+    console.warn('Cloud player delete failed', e);
+  }
+}
+
+
 /* Order list (setup) with name edit and delete */
 function renderOrderList(){
   orderList.innerHTML='';
@@ -1388,24 +1449,36 @@ li.querySelector('[data-edit-name]').onclick=()=>{
 
 
     /* delete player */
-    const delBtn = li.querySelector('[data-delete-player]');
-    delBtn.onclick=()=>{
-      const p = players[id];
-      if(!p) return;
-      if(!confirm(`Delete player "${p.name}" and all their scores?`)) return;
-      delete players[id];
-      throwOrder = throwOrder.filter(pid=>pid!==id);
-      boardPlayers = (boardPlayers||[]).filter(pid=>pid!==id);
-      saveBoard();
-      if(currentThrowerId===id){
-        const pool = rosterIds();
-        setThrower(pool[0] || null);
-      }
-      saveLocal();
-      renderPlayers();
-      renderOrderList();
-      updateBars();
-    };
+const delBtn = li.querySelector('[data-delete-player]');
+delBtn.onclick = () => {
+  const p = players[id];
+  if (!p) return;
+
+  if (!confirm(`Delete player "${p.name}" and all their scores?`)) return;
+
+  // 1) Local delete
+  delete players[id];
+  throwOrder = throwOrder.filter(pid => pid !== id);
+  boardPlayers = (boardPlayers || []).filter(pid => pid !== id);
+  saveBoard();
+
+  if (currentThrowerId === id) {
+    const pool = rosterIds();
+    setThrower(pool[0] || null);
+  }
+
+  // 2) Save locally only (no full cloud write)
+  saveLocal(true);
+
+  // 3) Explicitly delete from Firestore so it can't be resurrected
+  deletePlayerFromCloud(id);
+
+  // 4) Re-render UI
+  renderPlayers();
+  renderOrderList();
+  updateBars();
+};
+
 
     btns.append(up,down,photoBtn,rem);
     orderList.appendChild(li);
@@ -1620,23 +1693,68 @@ scorePlayerSel.onchange=()=>{
   saveLocal();
 };
 
-undoVisitBtn.onclick=()=>{
-  if(visit.length>0){
+undoVisitBtn.onclick = () => {
+  // If user is just removing one of the three darts before submit
+  if (visit.length > 0) {
     playTap();
-    visit.pop(); renderVisit(); nudge('');
+    visit.pop();
+    renderVisit();
+    nudge('');
     return;
   }
-  const last = actionStack.pop(); if(!last){ nudge('Nothing to undo'); return; }
+
+  // Proper undo of the last SUBMITTED visit on this device
+  const last = actionStack.pop();
+  if (!last) {
+    nudge('Nothing to undo');
+    return;
+  }
+
   playTap();
-  const p = players[last.playerId]; if(!p){ return; }
-  setPlayerScore(last.playerId, (p.score||0) - last.total);
-  setPlayerDarts(last.playerId, (p.darts||0) - last.dartsUsed);
-  if(last.plus100) setPlayerTonPlus(last.playerId, (p.tonPlus||0) - 1);
-  if(last.max180)  setPlayerOneEighties(last.playerId, (p.oneEighties||0) - 1);
+
+  const p = players[last.playerId];
+  if (!p) {
+    nudge('Player no longer exists');
+    return;
+  }
+
+  const skipCloud = true;
+
+  // 1) Local UI update - do NOT push full document to cloud
+  setPlayerScore(last.playerId, (p.score || 0) - last.total, skipCloud);
+  setPlayerDarts(last.playerId, (p.darts || 0) - last.dartsUsed, skipCloud);
+
+  if (last.plus100) {
+    setPlayerTonPlus(last.playerId, (p.tonPlus || 0) - 1, skipCloud);
+  }
+  if (last.max180) {
+    setPlayerOneEighties(last.playerId, (p.oneEighties || 0) - 1, skipCloud);
+  }
+
+  // 2) Cloud: atomic decrements so multiple boards can undo safely
+  if (eventRef) {
+    try {
+      const inc = firebase.firestore.FieldValue.increment;
+      const updates = {};
+      updates[`players.${last.playerId}.score`]      = inc(-last.total);
+      updates[`players.${last.playerId}.darts`]      = inc(-last.dartsUsed);
+      if (last.plus100) updates[`players.${last.playerId}.tonPlus`]      = inc(-1);
+      if (last.max180)  updates[`players.${last.playerId}.oneEighties`]  = inc(-1);
+      eventRef.set(updates, { merge: true });
+    } catch (e) {
+      console.warn('Cloud undo push failed', e);
+    }
+  }
+
+  // 3) Re-open that visit visually and persist locally only
   setThrower(last.playerId);
   setMult(1);
-  visit = last.darts.slice(); renderVisit(); saveLocal(); nudge('Reopened previous visit');
+  visit = last.darts.slice();
+  renderVisit();
+  saveLocalOnly();    // update localStorage + stack, no extra cloud write
+  nudge('Reopened previous visit');
 };
+
 
 submitBtn.onclick=()=>{
   const pool = rosterIds();
