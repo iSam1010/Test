@@ -579,11 +579,10 @@ function getStateForSync(){
     throwOrder,
     currentIndex,
     showExtra,
-    actionStack,
-    currentThrowerId,
     updated: nowTs()
   };
 }
+
 
 // Make sure a player always has a numeric lastUpdated
 function ensurePlayerStamp(p){
@@ -958,12 +957,12 @@ function attachCloudListener(){
       isApplyingRemote = true;
 
       // Non player fields
-      goal             = data.goal ?? goal;
-      showExtra        = !!data.showExtra;
-      throwOrder       = data.throwOrder || throwOrder || [];
-      currentIndex     = data.currentIndex || 0;
-      actionStack      = data.actionStack || [];
-      currentThrowerId = data.currentThrowerId || null;
+goal         = data.goal ?? goal;
+showExtra    = !!data.showExtra;
+throwOrder   = data.throwOrder || throwOrder || [];
+currentIndex = data.currentIndex || 0;
+// actionStack and currentThrowerId stay local per device
+
 
       // Per-player merge (assuming you already wired this in)
       const remotePlayers = data.players || {};
@@ -1684,9 +1683,13 @@ function poolAfter(id){
 }
 function setThrower(id){
   currentThrowerId = id || null;
-  if(currentThrowerId) scorePlayerSel.value = currentThrowerId;
-  saveLocal();
+  if (currentThrowerId) {
+    scorePlayerSel.value = currentThrowerId;
+  }
+  // Thrower is per device, so keep this local only
+  saveLocalOnly();
 }
+
 function advanceToNextThrower(fromId){
   const {pool, next} = poolAfter(fromId || currentThrowerId || rosterIds()[0]);
   if(!pool.length){ nudge('Select board players'); return; }
