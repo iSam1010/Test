@@ -1344,16 +1344,20 @@ function renderPlayers(){
       inp.value = '';
 
       // 2) Cloud - atomic increment so it’s safe with other boards
-      if (eventRef) {
+           if (eventRef) {
         try {
           const inc = firebase.firestore.FieldValue.increment;
           const updates = {};
+
           updates[`players.${p.id}.score`] = inc(v);
+          updates[`players.${p.id}.lastUpdated`] = nowTs();
+
           eventRef.set(updates, { merge: true });
         } catch (e) {
           console.warn('Cloud add-total failed', e);
         }
       }
+
     });
 
     // --- Correct total button (set score via diff) ---
@@ -1381,16 +1385,20 @@ function renderPlayers(){
       setPlayerScore(p.id, newTotal, skipCloud);
 
       // 2) Cloud - adjust by the difference, not overwrite the whole thing
-      if (eventRef && diff !== 0) {
+           if (eventRef && diff !== 0) {
         try {
           const inc = firebase.firestore.FieldValue.increment;
           const updates = {};
+
           updates[`players.${p.id}.score`] = inc(diff);
+          updates[`players.${p.id}.lastUpdated`] = nowTs();
+
           eventRef.set(updates, { merge: true });
         } catch (e) {
           console.warn('Cloud edit-total failed', e);
         }
       }
+
     });
 
     actions.append(addBtn, editBtn);
@@ -1834,19 +1842,29 @@ undoVisitBtn.onclick = () => {
   }
 
   // 2) Cloud: atomic decrements so multiple boards can undo safely
-  if (eventRef) {
+    if (eventRef) {
     try {
       const inc = firebase.firestore.FieldValue.increment;
       const updates = {};
-      updates[`players.${last.playerId}.score`]      = inc(-last.total);
-      updates[`players.${last.playerId}.darts`]      = inc(-last.dartsUsed);
-      if (last.plus100) updates[`players.${last.playerId}.tonPlus`]      = inc(-1);
-      if (last.max180)  updates[`players.${last.playerId}.oneEighties`]  = inc(-1);
+
+      updates[`players.${last.playerId}.score`] = inc(-last.total);
+      updates[`players.${last.playerId}.darts`] = inc(-last.dartsUsed);
+      if (last.plus100){
+        updates[`players.${last.playerId}.tonPlus`] = inc(-1);
+      }
+      if (last.max180){
+        updates[`players.${last.playerId}.oneEighties`] = inc(-1);
+      }
+
+      // Keep cloud copy “newer” for merge resolution
+      updates[`players.${last.playerId}.lastUpdated`] = nowTs();
+
       eventRef.set(updates, { merge: true });
     } catch (e) {
       console.warn('Cloud undo push failed', e);
     }
   }
+
 
   // 3) Re-open that visit visually and persist locally only
   setThrower(last.playerId);
@@ -1892,23 +1910,30 @@ if(max180){
 
 
     // 2) Push JUST this visit to Firestore using atomic increments
-  if (eventRef){
+    if (eventRef){
     try{
       const inc = firebase.firestore.FieldValue.increment;
       const updates = {};
+
+      // Atomic increments
       updates[`players.${pid}.score`] = inc(add);
       updates[`players.${pid}.darts`] = inc(dartsUsed);
-      if(plus100){
+      if (plus100){
         updates[`players.${pid}.tonPlus`] = inc(1);
       }
-      if(max180){
+      if (max180){
         updates[`players.${pid}.oneEighties`] = inc(1);
       }
+
+      // Critical: bump lastUpdated in the cloud so this state wins the merge
+      updates[`players.${pid}.lastUpdated`] = nowTs();
+
       eventRef.set(updates, { merge:true });
     }catch(e){
       console.warn('Cloud visit push failed', e);
     }
   }
+
 
 
   // 3) Local undo stack + local persistence (no extra cloud write)
