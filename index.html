@@ -659,9 +659,12 @@ function saveLocalOnly(){
 
 
 // New: local + optional cloud write
-function saveLocal(){
+function saveLocal(skipCloud){
   // Always keep this device up to date
   saveLocalOnly();
+
+  // Skip cloud write when explicitly requested (e.g. per-visit scoring)
+  if (skipCloud) return;
 
   // Only push to Firestore when we have an eventRef and we are not applying a remote snapshot
   if (eventRef && !isApplyingRemote){
@@ -674,6 +677,7 @@ function saveLocal(){
     }
   }
 }
+
 
 function loadLocalForCurrentEvent(){
   if (!currentEventId) return;
@@ -1434,43 +1438,45 @@ function setGoal(v){
   saveLocal();
 }
 
-function setPlayerScore(id, score){
+function setPlayerScore(id, score, skipCloud){
   if(!players[id]) return;
   score = Math.max(0, score);
   players[id].score = score;
   touchPlayer(id);
-  saveLocal();
+  saveLocal(skipCloud);
   renderPlayers();
   updateBars();
 }
 
-function setPlayerDarts(id, darts){
+function setPlayerDarts(id, darts, skipCloud){
   if(!players[id]) return;
   darts = Math.max(0, darts|0);
   players[id].darts = darts;
   touchPlayer(id);
-  saveLocal();
+  saveLocal(skipCloud);
   renderPlayers();
   updateBars();
 }
 
-function setPlayerTonPlus(id, val){
+function setPlayerTonPlus(id, val, skipCloud){
   if(!players[id]) return;
   val = Math.max(0, val|0);
   players[id].tonPlus = val;
   touchPlayer(id);
-  saveLocal();
+  saveLocal(skipCloud);
   renderPlayers();
 }
 
-function setPlayerOneEighties(id, val){
+function setPlayerOneEighties(id, val, skipCloud){
   if(!players[id]) return;
   val = Math.max(0, val|0);
   players[id].oneEighties = val;
   touchPlayer(id);
-  saveLocal();
+  saveLocal(skipCloud);
   renderPlayers();
 }
+
+
 
 function setPlayerPhoto(id, dataUrl){
   if(!players[id]) return;
@@ -1651,16 +1657,17 @@ submitBtn.onclick=()=>{
                  visit.length===3 &&
                  visit.every(d=> !d.isBull && d.base===20 && d.mult===3);
 
- // 1) Local UI update
-setPlayerScore(pid, (players[pid]?.score||0) + add);
-setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed);
+// 1) Local UI update - but do NOT push full document to cloud
+const skipCloud = true;
+setPlayerScore(pid, (players[pid]?.score||0) + add, skipCloud);
+setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed, skipCloud);
 
 if(plus100){
-  setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1);
+  setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1, skipCloud);
 }
 
 if(max180){
-  setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1);
+  setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1, skipCloud);
 }
 
 
