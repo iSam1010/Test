@@ -106,6 +106,27 @@
   button.warn{background:linear-gradient(180deg, #ef4444, #b91c1c);}
   .small{font-size:.85rem; color:var(--muted);} .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
   .num{font-variant-numeric: tabular-nums; text-align:right;}
+  
+  button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+/* Softer, cleaner placeholder style */
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.45; /* more subtle */
+}
+
+/* WebKit/iOS compatibility */
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: var(--muted);
+  opacity: 0.45;
+}
+
+
 
   .progress{height:18px; background:var(--chip); border:1px solid var(--border); border-radius:999px; overflow:hidden; margin-top:8px;}
   .bar{height:100%; width:0%; background:linear-gradient(90deg, var(--accent-2), #16a34a, #4ade80); transition:width .25s;}
@@ -249,13 +270,17 @@
       <div class="tab" data-tab="leaderboard">Leaderboard</div>
     </div>
 
-    <!-- Speaker mute/unmute -->
+        <!-- Speaker mute/unmute -->
     <button id="voiceBtn" class="icon-btn" title="Toggle voice" aria-label="Toggle voice">🔊</button>
+
+    <!-- Refresh page -->
+    <button id="refreshBtn" class="icon-btn" title="Refresh page" aria-label="Refresh page">🔄</button>
 
     <!-- Theme toggle -->
     <div id="modeToggle" class="mode-toggle" title="Toggle theme">
       <div class="mode-dot"></div><span class="mode-label" id="modeLabel">Dark</span>
     </div>
+
   </div>
 </div>
 
@@ -267,9 +292,9 @@
       <div class="card">
         <label>Event code (all devices share the same code)</label>
         <div class="row">
-          <input id="eventId" placeholder="e.g. macmillan2025" />
-          <button id="joinBtn" class="secondary" type="button">Join</button>
-          <button id="quickStartBtn" class="secondary" type="button">Quick Start (no code)</button>
+          <input id="eventId" placeholder="Enter an event code…" />
+          <button id="joinBtn" type="button">Join event</button>
+<button id="quickStartBtn" class="secondary" type="button">Local Test Mode (no sync)</button>
         </div>
         <p class="small" id="modeBadge">Cloud: not connected</p>
 
@@ -401,12 +426,15 @@
 <div id="startMask" class="mask show" aria-hidden="false">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
     <h3 id="startTitle">Start</h3>
-    <p class="small">Join an event (cloud sync) or use Quick Start for local testing.</p>
-    <div class="modal-row">
-      <input id="startCode" placeholder="Event code (e.g. macmillan2025)" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
-      <button id="startJoin" class="secondary" type="button">Join</button>
-      <button id="startQuick" type="button">Quick Start</button>
-    </div>
+<p class="small">
+  Join an event to sync scores across devices.<br>
+  <strong>Local Test Mode does NOT save or sync scores.</strong>
+</p>
+<div class="modal-row">
+ <input id="startCode" placeholder="Enter an event code…" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
+  <button id="startJoin" type="button">Join event</button>
+  <button id="startQuick" class="secondary" type="button">Local Test Mode</button>
+</div>
   </div>
 </div>
 
@@ -430,10 +458,10 @@
     <h3 id="boardTitle">Select board players (this device)</h3>
     <div id="boardList" style="display:flex; flex-direction:column; gap:8px; margin-top:8px; max-height:60vh; overflow-y:auto;"></div>
     <div class="modal-row" style="margin-top:12px;">
-      <button id="boardClear" class="secondary" type="button">Clear</button>
-      <button id="boardSave" type="button">Save players</button>
-      <button id="boardCancel" class="secondary" type="button">Cancel</button>
-    </div>
+  <button id="boardCancel" class="secondary" type="button">Cancel</button>
+  <button id="boardClear" class="warn" type="button">Clear</button>
+  <button id="boardSave" type="button">Save players</button>
+</div>
   </div>
 </div>
 
@@ -526,10 +554,17 @@ $('#voiceBtn').onclick = ()=>{
   updateVoiceBtn();
 };
 updateVoiceBtn();
+    
 
-/* Storage */
-const LS='dm_countup_state_clean_v16';
+/* Storage - per-event for scores, shared for board selection */
+const LS_PREFIX='dm_countup_state_clean_v17_'; // new prefix so old blob is ignored
 const LSB='dm_board_players_v1';
+
+function lsKeyForCurrent(){
+  // Scores are stored per event; no event = no scores persisted
+  return LS_PREFIX + (currentEventId || 'no_event');
+}
+
 
 // Simple helper for timestamps
 function nowTs(){
@@ -607,7 +642,11 @@ function updateModeBadge(customText, isCloud, isConnected, isError){
 
 // New: local-only saver
 function saveLocalOnly(){
-  localStorage.setItem(LS, JSON.stringify({
+  if (!currentEventId){
+    // No event joined - do not persist scores to avoid leaking between events
+    return;
+  }
+  localStorage.setItem(lsKeyForCurrent(), JSON.stringify({
     goal,
     players,
     throwOrder,
@@ -617,6 +656,7 @@ function saveLocalOnly(){
     currentThrowerId
   }));
 }
+
 
 // New: local + optional cloud write
 function saveLocal(){
@@ -635,31 +675,33 @@ function saveLocal(){
   }
 }
 
-
-function loadLocal(){
+function loadLocalForCurrentEvent(){
+  if (!currentEventId) return;
   try{
-    const d=JSON.parse(localStorage.getItem(LS)||'{}');
-    goal=d.goal||100000;
-    players=d.players||{};
+    const d = JSON.parse(localStorage.getItem(lsKeyForCurrent()) || '{}');
+    goal             = d.goal || 100000;
+    players          = d.players || {};
     Object.values(players).forEach(p=>{
       p.darts       = p.darts       || 0;
       p.tonPlus     = p.tonPlus     || 0;
       p.oneEighties = p.oneEighties || 0;
       ensurePlayerStamp(p);
     });
-    throwOrder       = d.throwOrder||Object.keys(players);
-    currentIndex     = d.currentIndex||0;
+    throwOrder       = d.throwOrder || Object.keys(players);
+    currentIndex     = d.currentIndex || 0;
     showExtra        = !!d.showExtra;
-    actionStack      = d.actionStack||[];
-    currentThrowerId = d.currentThrowerId||null;
+    actionStack      = d.actionStack || [];
+    currentThrowerId = d.currentThrowerId || null;
   }catch(_){}
+}
+
+function loadBoardLocal(){
   try{
     boardPlayers = JSON.parse(localStorage.getItem(LSB)||'[]');
   }catch(_){
     boardPlayers=[];
   }
 }
-
 
 /* Tabs + password */
 function switchTab(name){
@@ -719,6 +761,35 @@ const startJoinBtn = $('#startJoin');
 const startQuickBtn = $('#startQuick');
 const joinBtn = $('#joinBtn');
 const quickStartBtn = $('#quickStartBtn');
+const refreshBtn = $('#refreshBtn');
+
+// Refresh page with confirmation
+if (refreshBtn){
+  refreshBtn.onclick = ()=>{
+    const msg = 'Refresh this page and reload the event?\n\nScores are stored in the cloud per event, but any unsynced local changes may be lost.';
+    if(confirm(msg)){
+      location.reload();
+    }
+  };
+}
+
+
+// Disable join buttons until a code is typed
+startJoinBtn.disabled = true;
+joinBtn.disabled = true;
+
+// Enable/disable Start modal Join based on input
+startCodeInput.addEventListener('input', ()=>{
+  const hasCode = !!startCodeInput.value.trim();
+  startJoinBtn.disabled = !hasCode;
+});
+
+// Enable/disable Setup tab Join based on input
+eventIdInput.addEventListener('input', ()=>{
+  const hasCode = !!eventIdInput.value.trim();
+  joinBtn.disabled = !hasCode;
+});
+
 
 /* Helpers */
 const teamTotal = ()=> Object.values(players).reduce((s,p)=>s+(p.score||0),0);
@@ -932,7 +1003,6 @@ function attachCloudListener(){
   }
 }
 
-
 function joinCloudWithCode(rawCode, closeStartMask){
   const code = (rawCode || '').trim().toLowerCase();
   if(!code){
@@ -940,43 +1010,107 @@ function joinCloudWithCode(rawCode, closeStartMask){
     return;
   }
 
-  currentEventId = code;
+  // Switch to a new event: clear in-memory scoreboard so nothing leaks across
   detachCloudListener();
+  currentEventId   = code;
+  goal             = 100000;
+  players          = {};
+  throwOrder       = [];
+  currentIndex     = 0;
+  actionStack      = [];
+  currentThrowerId = null;
+  visit            = [];
+  renderVisit();
+  renderPlayers();
+  updateBars();
+  renderBoardCount();
+  syncToggle();
+
+  // Load any local cache tied specifically to this event (if we've used it before)
+  loadLocalForCurrentEvent();
+
   if(closeStartMask){
     startMask.classList.remove('show');
     startMask.setAttribute('aria-hidden','true');
   }
   if(eventIdInput) eventIdInput.value = code;
+
   attachCloudListener();
   nudge(`Joined cloud event "${code}"`);
 }
 
-
 /* Start modal buttons */
-startJoinBtn.onclick = ()=> joinCloudWithCode(startCodeInput.value, true);
+startJoinBtn.onclick = ()=>{
+  if(!startCodeInput.value.trim()){
+    nudge('Enter an event code', 'error');
+    return;
+  }
+  joinCloudWithCode(startCodeInput.value, true);
+};
 
-// Quick Start now just means "no event code, unsynced"
+// Local Test Mode - no sync, no saved scores
 startQuickBtn.onclick = ()=>{
-  currentEventId = null;
+  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
+    return;
+  }
+
   detachCloudListener();
+  currentEventId   = null;
+  goal             = 100000;
+  players          = {};
+  throwOrder       = [];
+  currentIndex     = 0;
+  actionStack      = [];
+  currentThrowerId = null;
+  visit            = [];
+  renderVisit();
+  renderPlayers();
+  updateBars();
+  renderBoardCount();
+  syncToggle();
+
   startMask.classList.remove('show');
   startMask.setAttribute('aria-hidden','true');
   cloudConnected = false;
-  updateModeBadge(null, false, false, true); // red "not connected"
-  nudge('Quick Start: scores are NOT syncing to the cloud');
+  updateModeBadge(null, false, false, true);
+  nudge('Local Test Mode: scores are NOT saved or synced');
 };
 
 
 /* Setup tab join/quick-start */
-joinBtn.onclick = ()=> joinCloudWithCode(eventIdInput.value, false);
+joinBtn.onclick = ()=>{
+  if(!eventIdInput.value.trim()){
+    nudge('Enter an event code', 'error');
+    return;
+  }
+  joinCloudWithCode(eventIdInput.value, false);
+};
 
-// Same idea as startQuick - just clearly unsynced
+
+// Local Test Mode from Setup tab
 quickStartBtn.onclick = ()=>{
-  currentEventId = null;
+  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
+    return;
+  }
+
   detachCloudListener();
+  currentEventId   = null;
+  goal             = 100000;
+  players          = {};
+  throwOrder       = [];
+  currentIndex     = 0;
+  actionStack      = [];
+  currentThrowerId = null;
+  visit            = [];
+  renderVisit();
+  renderPlayers();
+  updateBars();
+  renderBoardCount();
+  syncToggle();
+
   cloudConnected = false;
-  updateModeBadge(null, false, false, true); // red "not connected"
-  nudge('This device is NOT syncing to the cloud');
+  updateModeBadge(null, false, false, true);
+  nudge('Local Test Mode: this device is NOT syncing to the cloud');
 };
 
 
@@ -1517,22 +1651,18 @@ submitBtn.onclick=()=>{
                  visit.length===3 &&
                  visit.every(d=> !d.isBull && d.base===20 && d.mult===3);
 
-  // 1) Local UI update – but tell saveLocal() NOT to push a full doc
-  suppressCloudOnce = true;
-  setPlayerScore(pid, (players[pid]?.score||0) + add);
+ // 1) Local UI update
+setPlayerScore(pid, (players[pid]?.score||0) + add);
+setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed);
 
-  suppressCloudOnce = true;
-  setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed);
+if(plus100){
+  setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1);
+}
 
-  if(plus100){
-    suppressCloudOnce = true;
-    setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1);
-  }
+if(max180){
+  setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1);
+}
 
-  if(max180){
-    suppressCloudOnce = true;
-    setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1);
-  }
 
     // 2) Push JUST this visit to Firestore using atomic increments
   if (eventRef){
@@ -1585,11 +1715,11 @@ function syncToggle(){ toggleExtra.checked = !!showExtra; }
 /* Init */
 function init(){
   switchTab('scoring');
-  loadLocal();
+  loadBoardLocal();           // only per-device board selection
   buildSegGrids();
   setMult(1);
   renderVisit();
-  renderPlayers();
+  renderPlayers();            // players is empty until an event is joined
   updateBars();
   if(!currentThrowerId){
     const first = rosterIds()[0];
@@ -1597,8 +1727,9 @@ function init(){
   }
   syncToggle();
   renderBoardCount();
-  updateModeBadge(); // start in local mode until they join an event
+  updateModeBadge();          // start in "not connected" until they join an event
 }
+
 init();
 </script>
 </body>
