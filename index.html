@@ -478,6 +478,9 @@ let currentEventId = null;
 let eventRef = null;
 let unsubscribeEvent = null;
 let isApplyingRemote = false;
+let cloudConnected = false; // true only once Firestore sends us data
+let suppressCloudOnce = false;      // used to stop full-doc writes during a single scoring op
+
 
 /* Theme (defaults to dark) */
 const THEME_KEY='dm_theme';
@@ -594,19 +597,23 @@ function saveLocal(){
   // Always keep this device up to date
   saveLocalOnly();
 
-  // Only push to Firestore when we are in cloud mode
-  if (typeof syncMode !== 'undefined' &&
-      syncMode === 'cloud' &&
-      typeof eventRef !== 'undefined' &&
-      eventRef &&
-      !isApplyingRemote) {
-    try {
-      eventRef.set(getStateForSync(), { merge: true });
-    } catch (e) {
+  // If we’re in the middle of a scoring op where we’ll push a
+  // small incremental update instead, skip the full-doc cloud write once.
+  if (suppressCloudOnce){
+    suppressCloudOnce = false;
+    return;
+  }
+
+  // Normal path – admin changes, name edits, goal changes etc
+  if (syncMode === 'cloud' && eventRef && !isApplyingRemote){
+    try{
+      eventRef.set(getStateForSync(), { merge:true });
+    }catch(e){
       console.warn('Cloud sync failed', e);
     }
   }
 }
+
 
 function loadLocal(){
   try{
@@ -1367,26 +1374,66 @@ submitBtn.onclick=()=>{
     return;
   }
 
-  playTap();
-
   const add = visit.reduce((s,d)=>s+(d.score||0),0);
   const dartsUsed = visit.length;
   const plus100 = add >= 100;
-  const max180 = add === 180 && visit.length===3 && visit.every(d=> !d.isBull && d.base===20 && d.mult===3);
+  const max180 = add === 180 &&
+                 visit.length===3 &&
+                 visit.every(d=> !d.isBull && d.base===20 && d.mult===3);
 
+  // 1) Local UI update – but tell saveLocal() NOT to push a full doc
+  suppressCloudOnce = true;
   setPlayerScore(pid, (players[pid]?.score||0) + add);
-  setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed);
-  if(plus100) setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1);
-  if(max180)  setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1);
 
-  actionStack.push({ playerId: pid, darts: visit.slice(), total: add, dartsUsed, plus100, max180 });
-  saveLocal();
+  suppressCloudOnce = true;
+  setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed);
+
+  if(plus100){
+    suppressCloudOnce = true;
+    setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1);
+  }
+
+  if(max180){
+    suppressCloudOnce = true;
+    setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1);
+  }
+
+  // 2) Push JUST this visit to Firestore using atomic increments
+  if (syncMode === 'cloud' && eventRef){
+    try{
+      const inc = firebase.firestore.FieldValue.increment;
+      const updates = {};
+      updates[`players.${pid}.score`] = inc(add);
+      updates[`players.${pid}.darts`] = inc(dartsUsed);
+      if(plus100){
+        updates[`players.${pid}.tonPlus`] = inc(1);
+      }
+      if(max180){
+        updates[`players.${pid}.oneEighties`] = inc(1);
+      }
+      eventRef.set(updates, { merge:true });
+    }catch(e){
+      console.warn('Cloud visit push failed', e);
+    }
+  }
+
+  // 3) Local undo stack + local persistence (no extra cloud write)
+  actionStack.push({
+    playerId: pid,
+    darts: visit.slice(),
+    total: add,
+    dartsUsed,
+    plus100,
+    max180
+  });
+  saveLocalOnly();
 
   /* Voice callout - speak total or "no score" */
   speakTotal(add);
 
   advanceToNextThrower(pid);
 };
+
 
 /* TV toggle */
 toggleExtra.onchange = () => {
