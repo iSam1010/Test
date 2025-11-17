@@ -1,3 +1,4 @@
+<!-- Created by Sam Harper -->
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -1024,6 +1025,11 @@ function joinCloudWithCode(rawCode, closeStartMask){
   actionStack      = [];
   currentThrowerId = null;
   visit            = [];
+
+  // NEW: reset board selection for this device
+  boardPlayers = [];
+  saveBoard();
+
   renderVisit();
   renderPlayers();
   updateBars();
@@ -1042,6 +1048,7 @@ function joinCloudWithCode(rawCode, closeStartMask){
   attachCloudListener();
   nudge(`Joined cloud event "${code}"`);
 }
+
 
 /* Start modal buttons */
 startJoinBtn.onclick = ()=>{
@@ -1067,6 +1074,11 @@ startQuickBtn.onclick = ()=>{
   actionStack      = [];
   currentThrowerId = null;
   visit            = [];
+
+  // NEW: reset board selection
+  boardPlayers = [];
+  saveBoard();
+
   renderVisit();
   renderPlayers();
   updateBars();
@@ -1106,6 +1118,11 @@ quickStartBtn.onclick = ()=>{
   actionStack      = [];
   currentThrowerId = null;
   visit            = [];
+
+  // NEW: reset board selection
+  boardPlayers = [];
+  saveBoard();
+
   renderVisit();
   renderPlayers();
   updateBars();
@@ -1116,6 +1133,8 @@ quickStartBtn.onclick = ()=>{
   updateModeBadge(null, false, false, true);
   nudge('Local Test Mode: this device is NOT syncing to the cloud');
 };
+
+
 
 
 /* Board players modal */
@@ -1194,8 +1213,17 @@ function buildBoardList(){
 }
 
 function renderBoardCount(){
-  boardCount.textContent = (boardPlayers && boardPlayers.length>0) ? `${boardPlayers.length} selected` : 'All players';
+  // If no event or no players, treat as "All players"
+  if (!currentEventId || !Object.keys(players).length){
+    boardCount.textContent = 'All players';
+    return;
+  }
+
+  boardCount.textContent = (boardPlayers && boardPlayers.length > 0)
+    ? `${boardPlayers.length} selected`
+    : 'All players';
 }
+
 
 /* Throw pool helpers */
 function rosterIds(){
