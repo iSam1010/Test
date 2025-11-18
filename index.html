@@ -535,27 +535,122 @@ function updateVoiceBtn(){
   b.title = voiceOn ? 'Mute voice' : 'Unmute voice';
 }
 function speakTotal(total){
-  if(!voiceOn) return;
-  try{
-    window.speechSynthesis.cancel();
-    const msg = new SpeechSynthesisUtterance(total>0 ? String(total) : 'no score');
-    msg.rate = 1; msg.pitch = 1; msg.volume = 1;
-    const voices = speechSynthesis.getVoices();
-    let chosen = voices.find(v => /jamie/i.test(v.name)) ||
-                 voices.find(v => /en-GB/i.test(v.lang)) ||
-                 voices.find(v => /en/i.test(v.lang)) ||
-                 voices[0];
-    if(chosen) msg.voice = chosen;
-    speechSynthesis.speak(msg);
-  }catch(e){ /* ignore */ }
+  playScoreCall(total);
 }
+
 $('#voiceBtn').onclick = ()=>{
   voiceOn = !voiceOn;
   localStorage.setItem(VOX_KEY, JSON.stringify(voiceOn));
   updateVoiceBtn();
 };
 updateVoiceBtn();
-    
+ /* ===== Sound pack (MP3) ===== */
+/* Folder structure:
+   /sounds/gameon.mp3
+   /sounds/0.mp3 ... /sounds/180.mp3
+*/
+
+const SOUND_PATH = 'sounds/';
+const soundCache = {};
+let soundsPreloaded = false;
+
+// Preload all score sounds 0–180 + gameon
+function preloadSounds(){
+  if (soundsPreloaded) return;
+  soundsPreloaded = true;
+
+  // Preload "game on"
+  preloadSoundKey('gameon', SOUND_PATH + 'gameon.mp3');
+
+  // Preload numeric calls 0–180
+  for (let i = 0; i <= 180; i++){
+    preloadSoundKey(String(i), SOUND_PATH + i + '.mp3');
+  }
+}
+
+// Internal helper to preload one file
+function preloadSoundKey(key, url){
+  try{
+    const audio = new Audio();
+    audio.src = url;
+    audio.preload = 'auto';
+    audio.load(); // triggers buffering
+
+    soundCache[key] = audio;
+  }catch(e){
+    console.warn('Could not preload sound', key, url, e);
+  }
+}
+
+// Play by key ("gameon") or number (0–180)
+// Falls back to browser TTS automatically if missing
+function playSoundByKey(key, onError){
+  if (!voiceOn) return false;
+
+  const base = soundCache[key];
+  if (!base){
+    // No cached sound at all - let caller know so it can fallback
+    if (typeof onError === 'function') onError();
+    return false;
+  }
+
+  const a = base.cloneNode(true);
+
+  // If the audio element itself errors or stalls, trigger fallback
+  if (typeof onError === 'function'){
+    a.onerror = () => onError();
+    a.onstalled = () => onError();
+  }
+
+  try{
+    const p = a.play();
+    if (p && typeof p.then === 'function' && typeof onError === 'function'){
+      p.catch(() => onError());
+    }
+  }catch(e){
+    if (typeof onError === 'function') onError();
+    return false;
+  }
+
+  return true;
+}
+
+
+function playScoreCall(value){
+  if (!voiceOn) return;
+
+  // Numeric score 0-180
+  if (typeof value === 'number'){
+    const clamped = Math.max(0, Math.min(180, value|0));
+
+    // Try MP3, fallback to system TTS if anything goes wrong
+    playSoundByKey(String(clamped), () => {
+      speakTotalFallback(clamped);
+    });
+
+    return;
+  }
+
+  // Named call like "gameon"
+  if (typeof value === 'string'){
+    // For gameon etc we do not bother with TTS fallback
+    playSoundByKey(value.toLowerCase());
+  }
+}
+
+
+
+// Browser TTS fallback (only used if MP3 missing)
+function speakTotalFallback(total){
+  try{
+    window.speechSynthesis.cancel();
+    const msg = new SpeechSynthesisUtterance(String(total));
+    const voices = speechSynthesis.getVoices();
+    msg.voice = voices.find(v => /en-GB/i.test(v.lang)) || voices[0];
+    speechSynthesis.speak(msg);
+  }catch(e){}
+}
+   
 
 /* Storage - per-event for scores, shared for board selection */
 const LS_PREFIX='dm_countup_state_clean_v17_'; // new prefix so old blob is ignored
@@ -1190,7 +1285,12 @@ boardSave.onclick=()=>{
   saveBoard();
   closeBoardModal();
   refreshThrowerSelect();
+
+  if (boardPlayers.length > 0){
+    playScoreCall('gameon');
+  }
 };
+
 function saveBoard(){
   localStorage.setItem(LSB, JSON.stringify(boardPlayers||[]));
   renderBoardCount();
@@ -1938,6 +2038,7 @@ function syncToggle(){ toggleExtra.checked = !!showExtra; }
 
 /* Init */
 function init(){
+  preloadSounds(); // <-- preload sounds instantly
   switchTab('scoring');
   loadBoardLocal();           // only per-device board selection
   buildSegGrids();
