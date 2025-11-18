@@ -257,6 +257,25 @@ textarea::-webkit-input-placeholder {
     align-items:center;
     gap:8px;
   }
+#big180 {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  font-size: 10rem;          /* Bigger */
+  font-weight: 900;
+  color: #ff2020;
+  text-shadow: 
+    0 0 25px #ff0000,
+    0 0 45px #ff0000,
+    0 0 70px #ff0000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  z-index: 999999;
+}
+
+
 </style>
 </head>
 <body>
@@ -614,6 +633,17 @@ function playSoundByKey(key, onError){
 
   return true;
 }
+function showBig180() {
+  const el = document.getElementById('big180');
+  el.style.opacity = '1';
+  el.style.transform = 'translate(-50%, -50%) scale(1)';
+
+ setTimeout(() => {
+  el.style.opacity = '0';
+  el.style.transform = 'translate(-50%, -50%) scale(0.5)';
+}, 4500);
+
+}
 
 
 function playScoreCall(value){
@@ -946,13 +976,32 @@ eventIdInput.addEventListener('keydown', (e)=>{
 const teamTotal = ()=> Object.values(players).reduce((s,p)=>s+(p.score||0),0);
 const teamDarts  = ()=> Object.values(players).reduce((s,p)=>s+(p.darts||0),0);
 const threeDA = p => (p.darts>0 ? ((p.score/p.darts)*3) : 0);
-function nudge(msg){
+function nudge(msg, type){
+  // msg: string or empty
+  // type: 'error' for red, anything else/undefined = normal muted text
+
   nudgeEl.textContent = msg || '';
-  if(!msg) return;
+
+  if (!msg){
+    // Reset to default colour when clearing
+    nudgeEl.style.color = 'var(--muted)';
+    return;
+  }
+
+  if (type === 'error'){
+    nudgeEl.style.color = '#f97373'; // red
+  } else {
+    nudgeEl.style.color = 'var(--muted)'; // default muted colour
+  }
+
   setTimeout(()=>{
-    if(nudgeEl.textContent===msg) nudgeEl.textContent='';
-  }, 5000); // 5 seconds
+    if (nudgeEl.textContent === msg){
+      nudgeEl.textContent = '';
+      nudgeEl.style.color = 'var(--muted)';
+    }
+  }, 5000);
 }
+
 
 
 /* Subtle tap sound (Option B style) */
@@ -978,7 +1027,7 @@ function playTap(){
 
     const gain = ctx.createGain();
     const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.setValueAtTime(0.25, now);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
 
     noise.connect(gain);
@@ -1976,52 +2025,60 @@ undoVisitBtn.onclick = () => {
 };
 
 
-submitBtn.onclick=()=>{
+submitBtn.onclick = () => {
   const pool = rosterIds();
   const pid = currentThrowerId || pool[0];
-  if(!pid){
+
+  if (!pid) {
     nudge('Pick a player');
     return;
   }
-  if(visit.length===0){
-    nudge('Add at least one dart');
-    return;
-  }
 
-  const add = visit.reduce((s,d)=>s+(d.score||0),0);
-  const dartsUsed = visit.length;
+  // Force exactly 3 darts, including MISS
+  if (visit.length < 3) {
+  nudge('Enter all 3 darts (including MISS)', 'error'); 
+  return;
+}
+
+  const add = visit.reduce((s, d) => s + (d.score || 0), 0);
+  const dartsUsed = visit.length; // will always be 3 now
   const plus100 = add >= 100;
-  const max180 = add === 180 &&
-                 visit.length===3 &&
-                 visit.every(d=> !d.isBull && d.base===20 && d.mult===3);
+  const max180 =
+    add === 180 &&
+    visit.length === 3 &&
+    visit.every(d => !d.isBull && d.base === 20 && d.mult === 3);
 
-// 1) Local UI update - but do NOT push full document to cloud
-const skipCloud = true;
-setPlayerScore(pid, (players[pid]?.score||0) + add, skipCloud);
-setPlayerDarts(pid, (players[pid]?.darts||0) + dartsUsed, skipCloud);
+  // 1) Local UI update - but do NOT push full document to cloud
+  const skipCloud = true;
+  setPlayerScore(pid, (players[pid]?.score || 0) + add, skipCloud);
+  setPlayerDarts(pid, (players[pid]?.darts || 0) + dartsUsed, skipCloud);
 
-if(plus100){
-  setPlayerTonPlus(pid, (players[pid]?.tonPlus||0) + 1, skipCloud);
-}
-
-if(max180){
-  setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1, skipCloud);
-}
-
-    // 2) Push JUST this visit to Firestore using atomic increments
-  const inc = firebase.firestore.FieldValue.increment;
-  const updates = {};
-  updates[`players.${pid}.score`]      = inc(add);
-  updates[`players.${pid}.darts`]      = inc(dartsUsed);
-  if (plus100){
-    updates[`players.${pid}.tonPlus`]  = inc(1);
+  if (plus100) {
+    setPlayerTonPlus(pid, (players[pid]?.tonPlus || 0) + 1, skipCloud);
   }
-  if (max180){
-    updates[`players.${pid}.oneEighties`] = inc(1);
+
+  if (max180) {
+    setPlayerOneEighties(pid, (players[pid]?.oneEighties || 0) + 1, skipCloud);
   }
-  pushAtomic(updates);
 
-
+  // 2) Push JUST this visit to Firestore using atomic increments
+  if (eventRef) {
+    try {
+      const inc = firebase.firestore.FieldValue.increment;
+      const updates = {};
+      updates[`players.${pid}.score`] = inc(add);
+      updates[`players.${pid}.darts`] = inc(dartsUsed);
+      if (plus100) {
+        updates[`players.${pid}.tonPlus`] = inc(1);
+      }
+      if (max180) {
+        updates[`players.${pid}.oneEighties`] = inc(1);
+      }
+      eventRef.set(updates, { merge: true });
+    } catch (e) {
+      console.warn('Cloud visit push failed', e);
+    }
+  }
 
   // 3) Local undo stack + local persistence (no extra cloud write)
   actionStack.push({
@@ -2034,8 +2091,15 @@ if(max180){
   });
   saveLocalOnly();
 
-  /* Voice callout - speak total or "no score" */
+  // Voice callout
+ // Special 180 event
+if (max180) {
+  playScoreCall(180);
+  showBig180();
+} else {
   speakTotal(add);
+}
+
 
   advanceToNextThrower(pid);
 };
@@ -2072,6 +2136,7 @@ function init(){
 
 init();
 </script>
+<div id="big180">180</div>
 </body>
 </html>
 <!-- Copyright © [17/11/2025]. [Sam Harper]. All rights reserved. -->
