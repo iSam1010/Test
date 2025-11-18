@@ -672,13 +672,13 @@ function getStateForSync(){
     goal,
     players,
     throwOrder,
-    currentIndex,
+    currentIndex,   // optional, but harmless
     showExtra,
-    actionStack,
-    currentThrowerId,
     updated: nowTs()
   };
 }
+
+
 
 // Make sure a player always has a numeric lastUpdated
 function ensurePlayerStamp(p){
@@ -771,6 +771,27 @@ function saveLocal(skipCloud){
       // If cloud write fails, keep the red error state until it recovers
       updateModeBadge(null, true, false, true);
     }
+  }
+}
+// Helper for atomic Firestore updates for scores
+function pushAtomic(updates){
+  if (!eventRef) return;
+
+  // Always bump top-level updated so rules / listeners see a doc change
+  updates.updated = nowTs();
+
+  try{
+    eventRef.update(updates)
+      .then(() => {
+        console.log('Atomic update OK', updates);
+      })
+      .catch(err => {
+        console.error('Atomic update FAILED', err);
+        nudge('Cloud error - scores not synced');
+      });
+  }catch(e){
+    console.error('Atomic update threw', e);
+    nudge('Cloud error - scores not synced');
   }
 }
 
@@ -1052,13 +1073,14 @@ function attachCloudListener(){
       const data = doc.data() || {};
       isApplyingRemote = true;
 
-      // Non player fields
-      goal             = data.goal ?? goal;
-      showExtra        = !!data.showExtra;
-      throwOrder       = data.throwOrder || throwOrder || [];
-      currentIndex     = data.currentIndex || 0;
-      actionStack      = data.actionStack || [];
-      currentThrowerId = data.currentThrowerId || null;
+            // Non player fields
+      goal        = data.goal ?? goal;
+      showExtra   = !!data.showExtra;
+      throwOrder  = data.throwOrder || throwOrder || [];
+      currentIndex = data.currentIndex || 0; // if you ever use it
+      // actionStack and currentThrowerId stay per-device only now
+
+
 
       // Per-player merge (assuming you already wired this in)
       const remotePlayers = data.players || {};
@@ -1445,16 +1467,14 @@ function renderPlayers(){
       inp.value = '';
 
       // 2) Cloud - atomic increment so it’s safe with other boards
-      if (eventRef) {
-        try {
-          const inc = firebase.firestore.FieldValue.increment;
-          const updates = {};
-          updates[`players.${p.id}.score`] = inc(v);
-          eventRef.set(updates, { merge: true });
-        } catch (e) {
-          console.warn('Cloud add-total failed', e);
-        }
+            {
+        const inc = firebase.firestore.FieldValue.increment;
+        const updates = {};
+        updates[`players.${p.id}.score`] = inc(v);
+        pushAtomic(updates);
       }
+
+
     });
 
     // --- Correct total button (set score via diff) ---
@@ -1482,16 +1502,14 @@ function renderPlayers(){
       setPlayerScore(p.id, newTotal, skipCloud);
 
       // 2) Cloud - adjust by the difference, not overwrite the whole thing
-      if (eventRef && diff !== 0) {
-        try {
-          const inc = firebase.firestore.FieldValue.increment;
-          const updates = {};
-          updates[`players.${p.id}.score`] = inc(diff);
-          eventRef.set(updates, { merge: true });
-        } catch (e) {
-          console.warn('Cloud edit-total failed', e);
-        }
+           if (diff !== 0) {
+        const inc = firebase.firestore.FieldValue.increment;
+        const updates = {};
+        updates[`players.${p.id}.score`] = inc(diff);
+        pushAtomic(updates);
       }
+
+
     });
 
     actions.append(addBtn, editBtn);
@@ -1784,9 +1802,13 @@ function poolAfter(id){
 }
 function setThrower(id){
   currentThrowerId = id || null;
-  if(currentThrowerId) scorePlayerSel.value = currentThrowerId;
-  saveLocal();
+  if (currentThrowerId) {
+    scorePlayerSel.value = currentThrowerId;
+  }
+  // per-device only
+  saveLocalOnly();
 }
+
 function advanceToNextThrower(fromId){
   const {pool, next} = poolAfter(fromId || currentThrowerId || rosterIds()[0]);
   if(!pool.length){ nudge('Select board players'); return; }
@@ -1886,11 +1908,13 @@ skipBtn.onclick=()=>{
   advanceToNextThrower(currentThrowerId);
 };
 
-scorePlayerSel.onchange=()=>{
-  const pid=scorePlayerSel.value;
+scorePlayerSel.onchange = () => {
+  const pid = scorePlayerSel.value;
   currentThrowerId = pid || null;
-  saveLocal();
+  // per-device only
+  saveLocalOnly();
 };
+
 
 undoVisitBtn.onclick = () => {
   // If user is just removing one of the three darts before submit
@@ -1930,20 +1954,17 @@ undoVisitBtn.onclick = () => {
     setPlayerOneEighties(last.playerId, (p.oneEighties || 0) - 1, skipCloud);
   }
 
-  // 2) Cloud: atomic decrements so multiple boards can undo safely
-  if (eventRef) {
-    try {
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${last.playerId}.score`]      = inc(-last.total);
-      updates[`players.${last.playerId}.darts`]      = inc(-last.dartsUsed);
-      if (last.plus100) updates[`players.${last.playerId}.tonPlus`]      = inc(-1);
-      if (last.max180)  updates[`players.${last.playerId}.oneEighties`]  = inc(-1);
-      eventRef.set(updates, { merge: true });
-    } catch (e) {
-      console.warn('Cloud undo push failed', e);
-    }
+  {
+    const inc = firebase.firestore.FieldValue.increment;
+    const updates = {};
+    updates[`players.${last.playerId}.score`]      = inc(-last.total);
+    updates[`players.${last.playerId}.darts`]      = inc(-last.dartsUsed);
+    if (last.plus100) updates[`players.${last.playerId}.tonPlus`]     = inc(-1);
+    if (last.max180)  updates[`players.${last.playerId}.oneEighties`] = inc(-1);
+    pushAtomic(updates);
   }
+
+
 
   // 3) Re-open that visit visually and persist locally only
   setThrower(last.playerId);
@@ -1987,25 +2008,19 @@ if(max180){
   setPlayerOneEighties(pid, (players[pid]?.oneEighties||0) + 1, skipCloud);
 }
 
-
     // 2) Push JUST this visit to Firestore using atomic increments
-  if (eventRef){
-    try{
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${pid}.score`] = inc(add);
-      updates[`players.${pid}.darts`] = inc(dartsUsed);
-      if(plus100){
-        updates[`players.${pid}.tonPlus`] = inc(1);
-      }
-      if(max180){
-        updates[`players.${pid}.oneEighties`] = inc(1);
-      }
-      eventRef.set(updates, { merge:true });
-    }catch(e){
-      console.warn('Cloud visit push failed', e);
-    }
+  const inc = firebase.firestore.FieldValue.increment;
+  const updates = {};
+  updates[`players.${pid}.score`]      = inc(add);
+  updates[`players.${pid}.darts`]      = inc(dartsUsed);
+  if (plus100){
+    updates[`players.${pid}.tonPlus`]  = inc(1);
   }
+  if (max180){
+    updates[`players.${pid}.oneEighties`] = inc(1);
+  }
+  pushAtomic(updates);
+
 
 
   // 3) Local undo stack + local persistence (no extra cloud write)
