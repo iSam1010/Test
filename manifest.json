@@ -1,0 +1,23 @@
+{
+  "name": "Darts Marathon",
+  "short_name": "Darts Marathon",
+  "description": "Cloud synced darts marathon scoring for multiple boards.",
+  "start_url": "./darts.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "media/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "media/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
