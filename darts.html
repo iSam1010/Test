@@ -1180,48 +1180,19 @@ function attachCloudListener(){
 
 
 
-      // Per-player merge (assuming you already wired this in)
+           // Take players straight from Firestore – Firestore is the source of truth
       const remotePlayers = data.players || {};
-      const localPlayers  = players || {};
-      const mergedPlayers = {};
-      const allIds = new Set([
-        ...Object.keys(localPlayers),
-        ...Object.keys(remotePlayers)
-      ]);
 
-      allIds.forEach(id=>{
-        const lp = localPlayers[id];
-        const rp = remotePlayers[id];
-
-        if(!lp && !rp) return;
-
-        if(!lp && rp){
-          ensurePlayerStamp(rp);
-          mergedPlayers[id] = rp;
-          return;
-        }
-        if(lp && !rp){
-          ensurePlayerStamp(lp);
-          mergedPlayers[id] = lp;
-          return;
-        }
-
-        ensurePlayerStamp(lp);
-        ensurePlayerStamp(rp);
-        const lts = lp.lastUpdated;
-        const rts = rp.lastUpdated;
-
-        mergedPlayers[id] = (rts >= lts) ? rp : lp;
-      });
-
-      Object.values(mergedPlayers).forEach(p=>{
+      Object.values(remotePlayers).forEach(p => {
+        p.score       = p.score       || 0;
         p.darts       = p.darts       || 0;
         p.tonPlus     = p.tonPlus     || 0;
         p.oneEighties = p.oneEighties || 0;
-        ensurePlayerStamp(p);
+        // lastUpdated not used for conflict any more
       });
 
-      players = mergedPlayers;
+      players = remotePlayers;
+
 
          // ...after you’ve merged remote data into `players`, `goal`, etc...
 
