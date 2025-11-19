@@ -1,3 +1,4 @@
+
 <!-- Copyright © [17/11/2025]. [Sam Harper]. All rights reserved. -->
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -859,14 +860,11 @@ function saveLocal(skipCloud){
 function pushAtomic(updates){
   if (!eventRef) return;
 
-  // Always bump top-level updated so rules / listeners see a doc change
   updates.updated = nowTs();
 
   try{
     eventRef.update(updates)
-      .then(() => {
-        console.log('Atomic update OK', updates);
-      })
+      .then(() => console.log('Atomic update OK', updates))
       .catch(err => {
         console.error('Atomic update FAILED', err);
         nudge('Cloud error - scores not synced');
@@ -876,7 +874,6 @@ function pushAtomic(updates){
     nudge('Cloud error - scores not synced');
   }
 }
-
 
 function loadLocalForCurrentEvent(){
   if (!currentEventId) return;
@@ -2088,9 +2085,9 @@ submitBtn.onclick = () => {
 
   // Force exactly 3 darts, including MISS
   if (visit.length < 3) {
-  nudge('Enter all 3 darts (including MISS)', 'error'); 
-  return;
-}
+    nudge('Enter all 3 darts (including MISS)', 'error'); 
+    return;
+  }
 
   const add = visit.reduce((s, d) => s + (d.score || 0), 0);
   const dartsUsed = visit.length; // will always be 3 now
@@ -2114,23 +2111,17 @@ submitBtn.onclick = () => {
   }
 
   // 2) Push JUST this visit to Firestore using atomic increments
-  if (eventRef) {
-    try {
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${pid}.score`] = inc(add);
-      updates[`players.${pid}.darts`] = inc(dartsUsed);
-      if (plus100) {
-        updates[`players.${pid}.tonPlus`] = inc(1);
-      }
-      if (max180) {
-        updates[`players.${pid}.oneEighties`] = inc(1);
-      }
-      eventRef.set(updates, { merge: true });
-    } catch (e) {
-      console.warn('Cloud visit push failed', e);
-    }
+  const inc = firebase.firestore.FieldValue.increment;
+  const updates = {};
+  updates[`players.${pid}.score`]      = inc(add);
+  updates[`players.${pid}.darts`]      = inc(dartsUsed);
+  if (plus100) {
+    updates[`players.${pid}.tonPlus`]     = inc(1);
   }
+  if (max180) {
+    updates[`players.${pid}.oneEighties`] = inc(1);
+  }
+  pushAtomic(updates);  // <--- instead of eventRef.set(...)
 
   // 3) Local undo stack + local persistence (no extra cloud write)
   actionStack.push({
@@ -2143,15 +2134,13 @@ submitBtn.onclick = () => {
   });
   saveLocalOnly();
 
-  // Voice callout
- // Special 180 event
-if (max180) {
-  playScoreCall(180);
-  showBig180();
-} else {
-  speakTotal(add);
-}
-
+  // Voice callout + 180 overlay
+  if (max180) {
+    playScoreCall(180);
+    showBig180();
+  } else {
+    speakTotal(add);
+  }
 
   advanceToNextThrower(pid);
 };
