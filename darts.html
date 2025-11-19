@@ -48,6 +48,12 @@
   display:block;
   filter:none;
 }
+/* Fix iOS PWA status bar overlap */
+@supports (padding: max(0px)) {
+  .topbar {
+    padding-top: env(safe-area-inset-top);
+  }
+}
 
 html[data-theme="dark"] .top-logo{
   filter:brightness(2) invert(1);
