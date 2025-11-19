@@ -28,12 +28,17 @@
 
   /* TOP BAR — full-bleed, sticky, responsive */
   .topbar{
-    position:sticky; top:0; left:0; right:0; z-index:10000;
-    width:100vw; margin-left:calc(50% - 50vw);
-    background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
-    backdrop-filter:saturate(140%) blur(6px);
-    border-bottom:1px solid var(--border);
-  }
+  position:sticky;
+  top:0;
+  left:0;
+  right:0;
+  z-index:10000;
+  width:100%;             /* was 100vw */
+  margin-left:0;          /* remove the calc(...) hack */
+  background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
+  backdrop-filter:saturate(140%) blur(6px);
+  border-bottom:1px solid var(--border);
+}
  .top-logo{
   height:42px;
   width:auto;
