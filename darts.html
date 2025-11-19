@@ -4,10 +4,7 @@
 <head>
 <meta charset="UTF-8" />
 <title>Darts Marathon</title>
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <style>
   :root{
     --bg:#0b1020; --card:#111935; --muted:#9fb0d1; --accent:#3b82f6; --accent-2:#22c55e; --text:#eef2ff;
@@ -31,17 +28,12 @@
 
   /* TOP BAR — full-bleed, sticky, responsive */
   .topbar{
-  position:sticky;
-  top:0;
-  left:0;
-  right:0;
-  z-index:10000;
-  width:100%;             /* was 100vw */
-  margin-left:0;          /* remove the calc(...) hack */
-  background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
-  backdrop-filter:saturate(140%) blur(6px);
-  border-bottom:1px solid var(--border);
-}
+    position:sticky; top:0; left:0; right:0; z-index:10000;
+    width:100vw; margin-left:calc(50% - 50vw);
+    background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
+    backdrop-filter:saturate(140%) blur(6px);
+    border-bottom:1px solid var(--border);
+  }
  .top-logo{
   height:42px;
   width:auto;
@@ -57,35 +49,18 @@ html[data-theme="dark"] .top-logo{
     background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,247,252,.92));
   }
   .toprow{
-  width:100%;
-  max-width:1500px;
-  margin:0 auto;
-  padding:10px 12px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:nowrap;       /* was wrap – force a single line */
-  min-width:0;
-}
+    width:100%; max-width:1500px; margin:0 auto; padding:10px 12px;
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;
+  }
+  .brand{display:flex; align-items:center; gap:10px; min-width:180px; flex:1 1 auto;}
+  .brand h1{font-size:1.05rem; line-height:1.2; white-space:nowrap;}
+  .tabs{
+    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex:2 1 50%;
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:8px 14px; border-radius:999px; background:rgba(127,127,127,.12); cursor:pointer; user-select:none; transition:all .2s; white-space:nowrap;}
+  .tab.active{background:linear-gradient(180deg, var(--accent), #1d4ed8); color:#fff; box-shadow:0 6px 20px rgba(59,130,246,.35);}
 
-.brand{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  min-width:0;
-  flex:0 0 auto;
-  margin-right:8px;       /* NEW: space between logo and first tab */
-}
-
-.tabs{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
-  flex:1 1 auto;
-  min-width:0;
-}
   /* Mode pill */
   .mode-toggle{
     display:inline-flex; align-items:center; gap:8px;
@@ -337,90 +312,7 @@ textarea::-webkit-input-placeholder {
   transition: opacity 0.3s ease;
   z-index: 99998;               /* just under #big180 which is 99999 */
 }
-  @media (max-width:480px){
-  .brand h1{
-    font-size:0.9rem;
-  }
-  .icon-btn{
-    width:34px;
-    height:34px;
-  }
-  .mode-toggle{
-    padding:6px 10px;
-  }
-  }
-  /* Phone / small tablet tweaks so no zoom is needed */
-@media (max-width:900px){
-  .brand h1{
-    font-size:0.9rem;
-  }
 
-  .icon-btn{
-    width:32px;
-    height:32px;
-  }
-
-  .mode-toggle{
-    padding:6px 10px;
-    font-size:0.85rem;
-  }
-
-  .seg{
-    padding:10px 6px;
-    font-size:0.95rem;
-  }
-
-  .bulls-row{
-    gap:4px;
-  }
-
-  button{
-    padding:8px 12px;
-    font-size:0.9rem;
-  }
-}
-/* Compact layout on phones so it doesn't feel zoomed in */
-@media (max-width:480px){
-  .container{
-    padding:8px;
-  }
-
-  .card{
-    padding:10px;
-  }
-
-  .seg{
-    padding:10px 4px;
-    font-size:0.9rem;
-  }
-
-  .bulls-row{
-    gap:4px;
-  }
-
-  button{
-    padding:8px 12px;
-    font-size:0.9rem;
-  }
-
-  .brand h1{
-    font-size:0.9rem;
-  }
-
-  .toprow{
-    gap:6px;
-  }
-
-  .icon-btn{
-    width:32px;
-    height:32px;
-  }
-
-  .mode-toggle{
-    padding:6px 10px;
-    font-size:0.85rem;
-  }
-}
 </style>
 </head>
 <body>
