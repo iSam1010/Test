@@ -1,4 +1,3 @@
-
 <!-- Copyright © [17/11/2025]. [Sam Harper]. All rights reserved. -->
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -352,10 +351,9 @@ textarea::-webkit-input-placeholder {
       <div class="card">
         <label>Event code (all devices share the same code)</label>
         <div class="row">
-          <input id="eventId" placeholder="Enter an event code…" />
-          <button id="joinBtn" type="button">Join event</button>
-<button id="quickStartBtn" class="secondary" type="button">Local Test Mode (no sync)</button>
-        </div>
+  <input id="eventId" placeholder="Enter an event code…" />
+  <button id="joinBtn" type="button">Join event</button>
+</div>
         <p class="small" id="modeBadge">Cloud: not connected</p>
 
         <label style="margin-top:8px;">Team target</label>
@@ -487,13 +485,11 @@ textarea::-webkit-input-placeholder {
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
     <h3 id="startTitle">Start</h3>
 <p class="small">
-  Join an event to sync scores across devices.<br>
-  <strong>Local Test Mode does NOT save or sync scores.</strong>
+  Join an event to sync scores across devices.
 </p>
 <div class="modal-row">
- <input id="startCode" placeholder="Enter an event code…" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
+  <input id="startCode" placeholder="Enter an event code…" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
   <button id="startJoin" type="button">Join event</button>
-  <button id="startQuick" class="secondary" type="button">Local Test Mode</button>
 </div>
   </div>
 </div>
@@ -968,9 +964,7 @@ const boardMask=$('#boardMask'), boardList=$('#boardList'), boardSave=$('#boardS
 const startCodeInput = $('#startCode');
 const eventIdInput = $('#eventId');
 const startJoinBtn = $('#startJoin');
-const startQuickBtn = $('#startQuick');
 const joinBtn = $('#joinBtn');
-const quickStartBtn = $('#quickStartBtn');
 const refreshBtn = $('#refreshBtn');
 
 // Refresh page with confirmation
@@ -1275,39 +1269,6 @@ startJoinBtn.onclick = ()=>{
   joinCloudWithCode(startCodeInput.value, true);
 };
 
-// Local Test Mode - no sync, no saved scores
-startQuickBtn.onclick = ()=>{
-  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
-    return;
-  }
-
-  detachCloudListener();
-  currentEventId   = null;
-  goal             = 100000;
-  players          = {};
-  throwOrder       = [];
-  currentIndex     = 0;
-  actionStack      = [];
-  currentThrowerId = null;
-  visit            = [];
-
-  // NEW: reset board selection
-  boardPlayers = [];
-  saveBoard();
-
-  renderVisit();
-  renderPlayers();
-  updateBars();
-  renderBoardCount();
-  syncToggle();
-
-  startMask.classList.remove('show');
-  startMask.setAttribute('aria-hidden','true');
-  cloudConnected = false;
-  updateModeBadge(null, false, false, true);
-  nudge('Local Test Mode: scores are NOT saved or synced');
-};
-
 
 /* Setup tab join/quick-start */
 joinBtn.onclick = ()=>{
@@ -1317,40 +1278,6 @@ joinBtn.onclick = ()=>{
   }
   joinCloudWithCode(eventIdInput.value, false);
 };
-
-
-// Local Test Mode from Setup tab
-quickStartBtn.onclick = ()=>{
-  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
-    return;
-  }
-
-  detachCloudListener();
-  currentEventId   = null;
-  goal             = 100000;
-  players          = {};
-  throwOrder       = [];
-  currentIndex     = 0;
-  actionStack      = [];
-  currentThrowerId = null;
-  visit            = [];
-
-  // NEW: reset board selection
-  boardPlayers = [];
-  saveBoard();
-
-  renderVisit();
-  renderPlayers();
-  updateBars();
-  renderBoardCount();
-  syncToggle();
-
-  cloudConnected = false;
-  updateModeBadge(null, false, false, true);
-  nudge('Local Test Mode: this device is NOT syncing to the cloud');
-};
-
-
 
 
 /* Board players modal */
