@@ -34,6 +34,17 @@
     backdrop-filter:saturate(140%) blur(6px);
     border-bottom:1px solid var(--border);
   }
+ .top-logo{
+  height:42px;
+  width:auto;
+  display:block;
+  filter:none;
+}
+
+html[data-theme="dark"] .top-logo{
+  filter:brightness(2) invert(1);
+}
+
   html[data-theme="light"] .topbar{
     background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,247,252,.92));
   }
@@ -261,20 +272,47 @@ textarea::-webkit-input-placeholder {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.5);
-  font-size: 10rem;          /* Bigger */
+  transform: translate(-50%, -50%) scale(1); /* <- was scale(0.5) */
+  font-size: 10rem;
   font-weight: 900;
   color: #ff2020;
-  text-shadow: 
-    0 0 25px #ff0000,
-    0 0 45px #ff0000,
-    0 0 70px #ff0000;
+  /* Strong glow all the time */
+  text-shadow:
+    0 0 40px #ff4040,
+    0 0 80px #ff0000;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition: opacity 0.4s ease; /* <- drop transform from the transition */
   z-index: 999999;
 }
+@keyframes wobble180 {
+  0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  20%  { transform: translate(-50%, -50%) scale(1.05) rotate(-4deg); }
+  50%  { transform: translate(-50%, -50%) scale(1.1) rotate(4deg); }
+  80%  { transform: translate(-50%, -50%) scale(1.05) rotate(-3deg); }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
 
+
+@keyframes pulseGlow {
+  /* Same glow at start and end so no visual change */
+  0%,
+  100% {
+    text-shadow:
+      0 0 40px #ff4040,
+      0 0 80px #ff0000;
+  }
+}
+
+#big180mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.40); /* dim behind the 180 */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 99998;               /* just under #big180 which is 99999 */
+}
 
 </style>
 </head>
@@ -283,7 +321,9 @@ textarea::-webkit-input-placeholder {
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="toprow">
-    <div class="brand"><h1>Darts Marathon</h1></div>
+    <div class="brand">
+  <img src="media/images/logo.png" alt="Darts Marathon" class="top-logo">
+</div>
     <div class="tabs">
       <div class="tab" data-tab="setup">Setup</div>
       <div class="tab active" data-tab="scoring">Scoring</div>
@@ -312,10 +352,9 @@ textarea::-webkit-input-placeholder {
       <div class="card">
         <label>Event code (all devices share the same code)</label>
         <div class="row">
-          <input id="eventId" placeholder="Enter an event code…" />
-          <button id="joinBtn" type="button">Join event</button>
-<button id="quickStartBtn" class="secondary" type="button">Local Test Mode (no sync)</button>
-        </div>
+  <input id="eventId" placeholder="Enter an event code…" />
+  <button id="joinBtn" type="button">Join event</button>
+</div>
         <p class="small" id="modeBadge">Cloud: not connected</p>
 
         <label style="margin-top:8px;">Team target</label>
@@ -447,13 +486,11 @@ textarea::-webkit-input-placeholder {
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
     <h3 id="startTitle">Start</h3>
 <p class="small">
-  Join an event to sync scores across devices.<br>
-  <strong>Local Test Mode does NOT save or sync scores.</strong>
+  Join an event to sync scores across devices.
 </p>
 <div class="modal-row">
- <input id="startCode" placeholder="Enter an event code…" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
+  <input id="startCode" placeholder="Enter an event code…" style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
   <button id="startJoin" type="button">Join event</button>
-  <button id="startQuick" class="secondary" type="button">Local Test Mode</button>
 </div>
   </div>
 </div>
@@ -565,11 +602,11 @@ $('#voiceBtn').onclick = ()=>{
 updateVoiceBtn();
  /* ===== Sound pack (MP3) ===== */
 /* Folder structure:
-   /sounds/gameon.mp3
-   /sounds/0.mp3 ... /sounds/180.mp3
+   media/sounds/gameon.mp3
+   media/sounds/0.mp3 ... /sounds/180.mp3
 */
 
-const SOUND_PATH = 'sounds/';
+const SOUND_PATH = 'media/sounds/';
 const soundCache = {};
 let soundsPreloaded = false;
 
@@ -634,17 +671,30 @@ function playSoundByKey(key, onError){
   return true;
 }
 function showBig180() {
-  const el = document.getElementById('big180');
+  const el   = document.getElementById('big180');
+  const mask = document.getElementById('big180mask');
+
+  if (!el || !mask) return;
+
+  // Fade in the dimmed background
+  mask.style.opacity = '1';
+
+  // Reset animation so it can replay every time
+  el.style.animation = 'none';
+  void el.offsetWidth; // force reflow
+
+  // Show and animate the 180
   el.style.opacity = '1';
   el.style.transform = 'translate(-50%, -50%) scale(1)';
+  el.style.animation = 'wobble180 2.5s ease-out, pulseGlow 2.6s ease-out';
 
- setTimeout(() => {
-  el.style.opacity = '0';
-  el.style.transform = 'translate(-50%, -50%) scale(0.5)';
-}, 4500);
-
+  // Hide after 4.5s
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translate(-50%, -50%) scale(0.5)';
+    mask.style.opacity = '0';
+  }, 4500);
 }
-
 
 function playScoreCall(value){
   if (!voiceOn) return;
@@ -807,14 +857,11 @@ function saveLocal(skipCloud){
 function pushAtomic(updates){
   if (!eventRef) return;
 
-  // Always bump top-level updated so rules / listeners see a doc change
   updates.updated = nowTs();
 
   try{
     eventRef.update(updates)
-      .then(() => {
-        console.log('Atomic update OK', updates);
-      })
+      .then(() => console.log('Atomic update OK', updates))
       .catch(err => {
         console.error('Atomic update FAILED', err);
         nudge('Cloud error - scores not synced');
@@ -824,7 +871,6 @@ function pushAtomic(updates){
     nudge('Cloud error - scores not synced');
   }
 }
-
 
 function loadLocalForCurrentEvent(){
   if (!currentEventId) return;
@@ -919,9 +965,7 @@ const boardMask=$('#boardMask'), boardList=$('#boardList'), boardSave=$('#boardS
 const startCodeInput = $('#startCode');
 const eventIdInput = $('#eventId');
 const startJoinBtn = $('#startJoin');
-const startQuickBtn = $('#startQuick');
 const joinBtn = $('#joinBtn');
-const quickStartBtn = $('#quickStartBtn');
 const refreshBtn = $('#refreshBtn');
 
 // Refresh page with confirmation
@@ -1131,48 +1175,19 @@ function attachCloudListener(){
 
 
 
-      // Per-player merge (assuming you already wired this in)
+           // Take players straight from Firestore – Firestore is the source of truth
       const remotePlayers = data.players || {};
-      const localPlayers  = players || {};
-      const mergedPlayers = {};
-      const allIds = new Set([
-        ...Object.keys(localPlayers),
-        ...Object.keys(remotePlayers)
-      ]);
 
-      allIds.forEach(id=>{
-        const lp = localPlayers[id];
-        const rp = remotePlayers[id];
-
-        if(!lp && !rp) return;
-
-        if(!lp && rp){
-          ensurePlayerStamp(rp);
-          mergedPlayers[id] = rp;
-          return;
-        }
-        if(lp && !rp){
-          ensurePlayerStamp(lp);
-          mergedPlayers[id] = lp;
-          return;
-        }
-
-        ensurePlayerStamp(lp);
-        ensurePlayerStamp(rp);
-        const lts = lp.lastUpdated;
-        const rts = rp.lastUpdated;
-
-        mergedPlayers[id] = (rts >= lts) ? rp : lp;
-      });
-
-      Object.values(mergedPlayers).forEach(p=>{
+      Object.values(remotePlayers).forEach(p => {
+        p.score       = p.score       || 0;
         p.darts       = p.darts       || 0;
         p.tonPlus     = p.tonPlus     || 0;
         p.oneEighties = p.oneEighties || 0;
-        ensurePlayerStamp(p);
+        // lastUpdated not used for conflict any more
       });
 
-      players = mergedPlayers;
+      players = remotePlayers;
+
 
          // ...after you’ve merged remote data into `players`, `goal`, etc...
 
@@ -1255,39 +1270,6 @@ startJoinBtn.onclick = ()=>{
   joinCloudWithCode(startCodeInput.value, true);
 };
 
-// Local Test Mode - no sync, no saved scores
-startQuickBtn.onclick = ()=>{
-  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
-    return;
-  }
-
-  detachCloudListener();
-  currentEventId   = null;
-  goal             = 100000;
-  players          = {};
-  throwOrder       = [];
-  currentIndex     = 0;
-  actionStack      = [];
-  currentThrowerId = null;
-  visit            = [];
-
-  // NEW: reset board selection
-  boardPlayers = [];
-  saveBoard();
-
-  renderVisit();
-  renderPlayers();
-  updateBars();
-  renderBoardCount();
-  syncToggle();
-
-  startMask.classList.remove('show');
-  startMask.setAttribute('aria-hidden','true');
-  cloudConnected = false;
-  updateModeBadge(null, false, false, true);
-  nudge('Local Test Mode: scores are NOT saved or synced');
-};
-
 
 /* Setup tab join/quick-start */
 joinBtn.onclick = ()=>{
@@ -1297,40 +1279,6 @@ joinBtn.onclick = ()=>{
   }
   joinCloudWithCode(eventIdInput.value, false);
 };
-
-
-// Local Test Mode from Setup tab
-quickStartBtn.onclick = ()=>{
-  if(!confirm('Local Test Mode does NOT save or sync scores. Continue?')){
-    return;
-  }
-
-  detachCloudListener();
-  currentEventId   = null;
-  goal             = 100000;
-  players          = {};
-  throwOrder       = [];
-  currentIndex     = 0;
-  actionStack      = [];
-  currentThrowerId = null;
-  visit            = [];
-
-  // NEW: reset board selection
-  boardPlayers = [];
-  saveBoard();
-
-  renderVisit();
-  renderPlayers();
-  updateBars();
-  renderBoardCount();
-  syncToggle();
-
-  cloudConnected = false;
-  updateModeBadge(null, false, false, true);
-  nudge('Local Test Mode: this device is NOT syncing to the cloud');
-};
-
-
 
 
 /* Board players modal */
@@ -2036,9 +1984,9 @@ submitBtn.onclick = () => {
 
   // Force exactly 3 darts, including MISS
   if (visit.length < 3) {
-  nudge('Enter all 3 darts (including MISS)', 'error'); 
-  return;
-}
+    nudge('Enter all 3 darts (including MISS)', 'error'); 
+    return;
+  }
 
   const add = visit.reduce((s, d) => s + (d.score || 0), 0);
   const dartsUsed = visit.length; // will always be 3 now
@@ -2062,23 +2010,17 @@ submitBtn.onclick = () => {
   }
 
   // 2) Push JUST this visit to Firestore using atomic increments
-  if (eventRef) {
-    try {
-      const inc = firebase.firestore.FieldValue.increment;
-      const updates = {};
-      updates[`players.${pid}.score`] = inc(add);
-      updates[`players.${pid}.darts`] = inc(dartsUsed);
-      if (plus100) {
-        updates[`players.${pid}.tonPlus`] = inc(1);
-      }
-      if (max180) {
-        updates[`players.${pid}.oneEighties`] = inc(1);
-      }
-      eventRef.set(updates, { merge: true });
-    } catch (e) {
-      console.warn('Cloud visit push failed', e);
-    }
+  const inc = firebase.firestore.FieldValue.increment;
+  const updates = {};
+  updates[`players.${pid}.score`]      = inc(add);
+  updates[`players.${pid}.darts`]      = inc(dartsUsed);
+  if (plus100) {
+    updates[`players.${pid}.tonPlus`]     = inc(1);
   }
+  if (max180) {
+    updates[`players.${pid}.oneEighties`] = inc(1);
+  }
+  pushAtomic(updates);  // <--- instead of eventRef.set(...)
 
   // 3) Local undo stack + local persistence (no extra cloud write)
   actionStack.push({
@@ -2091,15 +2033,13 @@ submitBtn.onclick = () => {
   });
   saveLocalOnly();
 
-  // Voice callout
- // Special 180 event
-if (max180) {
-  playScoreCall(180);
-  showBig180();
-} else {
-  speakTotal(add);
-}
-
+  // Voice callout + 180 overlay
+  if (max180) {
+    playScoreCall(180);
+    showBig180();
+  } else {
+    speakTotal(add);
+  }
 
   advanceToNextThrower(pid);
 };
@@ -2136,6 +2076,7 @@ function init(){
 
 init();
 </script>
+<div id="big180mask"></div>
 <div id="big180">180</div>
 </body>
 </html>
