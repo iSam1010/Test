@@ -69,8 +69,9 @@ html[data-theme="dark"] .top-logo{
   display:flex;
   align-items:center;
   gap:10px;
-  min-width:0;            /* was 180px – let it shrink on narrow phones */
-  flex:0 1 auto;
+  min-width:0;
+  flex:0 0 auto;
+  margin-right:8px;       /* NEW: space between logo and first tab */
 }
 
 .tabs{
@@ -79,7 +80,7 @@ html[data-theme="dark"] .top-logo{
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
-  flex:1 1 auto;          /* let tabs take remaining space and shrink */
+  flex:1 1 auto;
   min-width:0;
 }
   /* Mode pill */
@@ -375,7 +376,48 @@ textarea::-webkit-input-placeholder {
     font-size:0.9rem;
   }
 }
+/* Compact layout on phones so it doesn't feel zoomed in */
+@media (max-width:480px){
+  .container{
+    padding:8px;
+  }
 
+  .card{
+    padding:10px;
+  }
+
+  .seg{
+    padding:10px 4px;
+    font-size:0.9rem;
+  }
+
+  .bulls-row{
+    gap:4px;
+  }
+
+  button{
+    padding:8px 12px;
+    font-size:0.9rem;
+  }
+
+  .brand h1{
+    font-size:0.9rem;
+  }
+
+  .toprow{
+    gap:6px;
+  }
+
+  .icon-btn{
+    width:32px;
+    height:32px;
+  }
+
+  .mode-toggle{
+    padding:6px 10px;
+    font-size:0.85rem;
+  }
+}
 </style>
 </head>
 <body>
