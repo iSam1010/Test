@@ -34,6 +34,17 @@
     backdrop-filter:saturate(140%) blur(6px);
     border-bottom:1px solid var(--border);
   }
+ .top-logo{
+  height:42px;
+  width:auto;
+  display:block;
+  filter:none;
+}
+
+html[data-theme="dark"] .top-logo{
+  filter:brightness(2) invert(1);
+}
+
   html[data-theme="light"] .topbar{
     background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,247,252,.92));
   }
@@ -262,19 +273,45 @@ textarea::-webkit-input-placeholder {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.5);
-  font-size: 10rem;          /* Bigger */
+  font-size: 10rem;
   font-weight: 900;
   color: #ff2020;
-  text-shadow: 
-    0 0 25px #ff0000,
-    0 0 45px #ff0000,
-    0 0 70px #ff0000;
+  /* Strong glow all the time */
+  text-shadow:
+    0 0 40px #ff4040,
+    0 0 80px #ff0000;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, transform 0.4s ease;
   z-index: 999999;
 }
 
+@keyframes wobble180 {
+  0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  25%  { transform: translate(-50%, -50%) scale(1.05) rotate(-1deg); }
+  50%  { transform: translate(-50%, -50%) scale(1.1) rotate(1deg); }
+  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+
+@keyframes pulseGlow {
+  /* Same glow at start and end so no visual change */
+  0%,
+  100% {
+    text-shadow:
+      0 0 40px #ff4040,
+      0 0 80px #ff0000;
+  }
+}
+
+#big180mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.40); /* dim behind the 180 */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 99998;               /* just under #big180 which is 99999 */
+}
 
 </style>
 </head>
@@ -283,7 +320,9 @@ textarea::-webkit-input-placeholder {
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="toprow">
-    <div class="brand"><h1>Darts Marathon</h1></div>
+    <div class="brand">
+  <img src="media/images/logo.png" alt="Darts Marathon" class="top-logo">
+</div>
     <div class="tabs">
       <div class="tab" data-tab="setup">Setup</div>
       <div class="tab active" data-tab="scoring">Scoring</div>
@@ -569,7 +608,7 @@ updateVoiceBtn();
    /sounds/0.mp3 ... /sounds/180.mp3
 */
 
-const SOUND_PATH = 'sounds/';
+const SOUND_PATH = 'media/sounds/';
 const soundCache = {};
 let soundsPreloaded = false;
 
@@ -634,17 +673,30 @@ function playSoundByKey(key, onError){
   return true;
 }
 function showBig180() {
-  const el = document.getElementById('big180');
+  const el   = document.getElementById('big180');
+  const mask = document.getElementById('big180mask');
+
+  if (!el || !mask) return;
+
+  // Fade in the dimmed background
+  mask.style.opacity = '1';
+
+  // Reset animation so it can replay every time
+  el.style.animation = 'none';
+  void el.offsetWidth; // force reflow
+
+  // Show and animate the 180
   el.style.opacity = '1';
   el.style.transform = 'translate(-50%, -50%) scale(1)';
+  el.style.animation = 'wobble180 0.3s ease-out, pulseGlow 0.4s ease-out';
 
- setTimeout(() => {
-  el.style.opacity = '0';
-  el.style.transform = 'translate(-50%, -50%) scale(0.5)';
-}, 4500);
-
+  // Hide after 4.5s
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translate(-50%, -50%) scale(0.5)';
+    mask.style.opacity = '0';
+  }, 4500);
 }
-
 
 function playScoreCall(value){
   if (!voiceOn) return;
@@ -2136,6 +2188,7 @@ function init(){
 
 init();
 </script>
+<div id="big180mask"></div>
 <div id="big180">180</div>
 </body>
 </html>
