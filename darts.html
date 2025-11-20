@@ -29,16 +29,14 @@
   }
   *{box-sizing:border-box}
   html,body{
-    background:var(--bg);
-    color:var(--text);
-    margin:0;
-    width:100%;
-    -webkit-text-size-adjust:100%;
-    transition:background .2s,color .2s;
-  }
-  /* Disable tap-to-zoom but keep pinch zoom */
-html, body {
-  touch-action: manipulation;
+  background:var(--bg);
+  color:var(--text);
+  margin:0;
+  width:100%;
+  -webkit-text-size-adjust:100%;
+  transition:background .2s,color .2s;
+  /* Stop iOS using tap to zoom, but still allow pinch */
+  touch-action:manipulation;
 }
 
 /* Ensure iOS never auto-zooms small text */
@@ -2660,6 +2658,25 @@ init();
 </script>
 <div id="big180mask"></div>
 <div id="big180">180</div>
+
+<!-- Kill iOS double-tap zoom but keep pinch zoom -->
+<script>
+(function () {
+  let lastTouchEnd = 0;
+
+  document.addEventListener('touchend', function (e) {
+    const now = Date.now();
+
+    // Two taps within 300ms = treat as double-tap and block it
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+
+    lastTouchEnd = now;
+  }, { passive: false });
+})();
+</script>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
