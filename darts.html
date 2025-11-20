@@ -642,6 +642,83 @@
   [data-inline-leaderboard].inline-leaderboard-edit-mode tbody td:nth-last-child(-n+2){
     display:table-cell;
   }
+/* Mobile sizing tweaks: scale whole UI up on phones */
+@media (max-width: 480px){
+
+  /* Slight bump, not massive */
+  html{
+    font-size:16px;            /* back from 17 to 16 */
+  }
+
+  .container{
+    padding:6px 10px 12px;
+  }
+
+  /* Headings and labels */
+  h1{ font-size:1.35rem; }
+  h2{ font-size:1.2rem; }
+  label,
+  .small{ font-size:.9rem; }
+
+  /* Cards */
+  .card{
+    padding:12px;
+  }
+
+  /* Main scoring grid - keep nice and big */
+  .seg-grid{ gap:6px; }
+  .seg{
+    padding:16px 10px;
+    font-size:1.3rem;
+    border-radius:12px;
+  }
+  .bulls-row .seg{
+    padding:14px 10px;
+    font-size:1.2rem;
+  }
+
+  /* General buttons and chips */
+  button,
+  .menu-chip,
+  .chip,
+  .toggle{
+    font-size:.9rem;
+    padding:10px 15px;
+  }
+
+  .pill-btn{
+    font-size:.85rem;
+    padding:7px 13px;
+  }
+
+  /* Leaderboard table – readable but not huge */
+  table thead th{
+    font-size:.8rem;
+  }
+  table tbody td{
+    font-size:.9rem;
+    padding:8px 6px;
+  }
+  .avatar{
+    width:30px;
+    height:30px;
+  }
+
+  /* Inline leaderboard edit button – sit nicely in the corner */
+  .inline-edit-toggle-btn{
+    top:12px;      /* between old 10 and new 14 */
+    right:12px;
+    padding:7px 13px;
+    font-size:.8rem;
+  }
+  /* Fix edit button overlap on mobile */
+@media (max-width: 480px){
+  .inline-edit-toggle-btn{
+    top: 2px;   /* lift it slightly above the text */
+  }
+}
+
+
 </style>
 </head>
 <body>
