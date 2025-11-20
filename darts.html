@@ -526,13 +526,81 @@ body {
     font-size:.85rem;
   }
 
-  .tv-wrap{padding:8px;}
-  .tv-title{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .tv-wrap{
+    padding:8px 0 16px;
+  }
+  .tv-grid-wrap{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .tv-grid{
+    width:100%;
+    min-width:600px; /* gives the table room; smaller screens will scroll horizontally */
+  }
+
+  /* Let TV view use the full screen width on phones */
+  @media (max-width: 720px){
+    .tv-wrap{
+      margin:0 -16px;          /* cancel container padding */
+      padding:8px 16px 16px;   /* add it back inside */
+    }
+  }
+
+  .tv-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
   .tv-title h2{margin:0;}
-  .tv-score-big{margin-top:8px; font-size:1.6rem; font-weight:800; text-align:right;}
-  .tv-progress{height:20px; border-radius:999px; background:var(--chip); border:1px solid var(--border); overflow:hidden; margin-top:8px;}
+
+  .tv-score-big{
+    margin-top:8px;
+    font-size:1.6rem;
+    font-weight:800;
+    text-align:right;
+  }
+
+  .tv-progress{
+    width:100%;
+    height:20px;
+    border-radius:999px;
+    background:var(--chip);
+    border:1px solid var(--border);
+    overflow:hidden;
+    margin-top:8px;
+  }
   .tv-progress .bar{height:100%;}
-  .tv-grid{width:100%; border-collapse:separate; border-spacing:0 6px; margin-top:10px;}
+
+
+.tv-wrap{
+    width:100%;
+    max-width:100%;
+  }
+
+  .tv-grid-wrap{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;        /* table can’t make page wider than screen */
+  }
+
+  /* TV leaderboard layout */
+  .tv-grid-wrap{
+    margin-top:10px;
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .tv-grid{
+    width:100%;
+    min-width:580px; /* gives columns room, but only inside the scroll area */
+    border-collapse:separate;
+    border-spacing:0 6px;
+  }
+
   .tv-grid thead th{
     padding:6px 8px;
     color:var(--muted);
@@ -543,13 +611,54 @@ body {
     text-align:left;
     padding-left:54px;
   }
-  .tv-grid tbody tr{background:linear-gradient(180deg, var(--row), var(--row2)); border:1px solid var(--border);}
-  .tv-grid td{padding:10px 8px;}
-  .tv-rank{width:50px; text-align:center; font-weight:800; font-size:1.1rem;}
-  .tv-name{font-size:1.1rem; display:flex; align-items:center; gap:10px;}
-  .tv-avatar{width:36px; height:36px; border-radius:999px; background:rgba(127,127,127,.18); background-size:cover; background-position:center;
-             display:inline-flex; align-items:center; justify-content:center; font-weight:800;}
-  .tv-num{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:1.15rem; text-align:right;}
+  .tv-grid tbody tr{
+    background:linear-gradient(180deg, var(--row), var(--row2));
+    border:1px solid var(--border);
+  }
+  .tv-grid td{
+    padding:10px 8px;
+  }
+  .tv-rank{
+    width:50px;
+    text-align:center;
+    font-weight:800;
+    font-size:1.1rem;
+  }
+  .tv-name{
+    font-size:1.1rem;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .tv-avatar{
+    width:36px;
+    height:36px;
+    border-radius:999px;
+    background:rgba(127,127,127,.18);
+    background-size:cover;
+    background-position:center;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+  }
+  .tv-num{
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:1.05rem;
+    text-align:right;
+  }
+
+  /* Slightly tighter on small screens */
+  @media (max-width:480px){
+    .tv-grid thead th,
+    .tv-grid td{
+      padding:8px 6px;
+      font-size:.9rem;
+    }
+    .tv-num{
+      font-size:1rem;
+    }
+  }
 
   .mask{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:5000;
         background:rgba(0,0,0,.35); backdrop-filter: blur(6px) brightness(0.8);}
@@ -632,12 +741,14 @@ body {
     right:10px;
     top:10px;
   }
-  .inline-leaderboard-scroll{
+ .inline-leaderboard-scroll{
     overflow-x:auto;
     -webkit-overflow-scrolling:touch;
   }
   .inline-leaderboard-scroll table{
-    min-width:600px;
+    width:100%;
+    max-width:100%;
+    table-layout:auto;
   }
 
   /* Hide last two columns (ADD + ACTIONS) by default on inline leaderboard */
@@ -1030,10 +1141,12 @@ body {
       <div class="tv-progress"><div class="bar" id="tvBar"></div></div>
       <div class="small" id="tvSummary" style="text-align:right; margin-top:6px;"></div>
 
-      <table class="tv-grid">
-        <thead><tr id="tvHeadRow"></tr></thead>
-        <tbody id="tvBody"></tbody>
-      </table>
+    <div class="tv-grid-wrap">
+        <table class="tv-grid">
+          <thead><tr id="tvHeadRow"></tr></thead>
+          <tbody id="tvBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
