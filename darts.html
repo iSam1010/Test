@@ -1048,7 +1048,7 @@
 <!-- Password modal -->
 <div id="pwMask" class="mask" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
-    <h3 id="pwTitle">Enter settings password</h3>
+    <h3 id="pwTitle">Enter setup password</h3>
     <div class="modal-row">
       <input id="pwInput" type="password" autocomplete="current-password" placeholder="Password"
              style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
@@ -1439,19 +1439,22 @@ function loadLocalForCurrentEvent(){
   if (!currentEventId) return;
   try{
     const d = JSON.parse(localStorage.getItem(lsKeyForCurrent()) || '{}');
-    goal             = d.goal || 100000;
-    players          = d.players || {};
+    goal        = d.goal || 100000;
+    players     = d.players || {};
     Object.values(players).forEach(p=>{
       p.darts       = p.darts       || 0;
       p.tonPlus     = p.tonPlus     || 0;
       p.oneEighties = p.oneEighties || 0;
       ensurePlayerStamp(p);
     });
-    throwOrder       = d.throwOrder || Object.keys(players);
-    currentIndex     = d.currentIndex || 0;
-    showExtra        = !!d.showExtra;
-    actionStack      = d.actionStack || [];
-    currentThrowerId = d.currentThrowerId || null;
+    throwOrder   = d.throwOrder || Object.keys(players);
+    currentIndex = d.currentIndex || 0;
+    showExtra    = !!d.showExtra;
+    actionStack  = d.actionStack || [];
+
+    // IMPORTANT: do NOT restore the last thrower from local storage.
+    // We always want the dropdown to start on "Select player…" on page load/join.
+    currentThrowerId = null;
   }catch(_){}
 }
 
@@ -2548,7 +2551,7 @@ submitBtn.onclick = () => {
   const pid = currentThrowerId;
 
   if (!pid) {
-    nudge('Pick a player', 'error');
+    nudge('Select a player first', 'error');
     return;
   }
 
