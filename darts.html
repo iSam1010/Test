@@ -13,7 +13,6 @@
 <meta name="apple-mobile-web-app-title" content="Darts Marathon">
 <link rel="apple-touch-icon" href="media/icons/icon-1024.png">
 <style>
-
   :root{
     --bg:#0b1020; --card:#111935; --muted:#9fb0d1; --accent:#3b82f6; --accent-2:#22c55e; --text:#eef2ff;
     --row:#0f172a; --row2:#0b1227; --border:rgba(255,255,255,.08); --danger:#dc2626;
@@ -29,73 +28,379 @@
     --btn-bg:#16a34a; --btn-bg2:#138a35;
   }
   *{box-sizing:border-box}
-  html,body{background:var(--bg); color:var(--text); margin:0; width:100%; -webkit-text-size-adjust:100%; transition:background .2s,color .2s;}
-  body{overflow-x:hidden;}
-  .container{max-width:1280px; width:100%; margin:0 auto; padding:16px;}
+  html,body{
+    background:var(--bg);
+    color:var(--text);
+    margin:0;
+    width:100%;
+    -webkit-text-size-adjust:100%;
+    transition:background .2s,color .2s;
+  }
+
+  /* Fix zoom-out while keeping full-width header */
+  html {
+    overflow-x: visible;
+  }
+  body {
+    overflow-x:hidden;
+    padding-top:42px; /* was 96px - pulls content slightly closer to top bar */
+  }
+  @supports(padding: max(0px)) {
+    body{
+      padding-top:calc(42px + env(safe-area-inset-top));
+    }
+  }
+
+  /* Slightly reduced top padding so content sits closer under header */
+  .container{
+    max-width:1280px;
+    width:100%;
+    margin:0 auto;
+    padding:8px 16px 16px;
+  }
   h1{margin:0; font-weight:800; font-size:1.5rem;}
 
-  /* TOP BAR — full-bleed, sticky, responsive */
+  /* ========================= */
+  /*        TOP BAR            */
+  /* ========================= */
+
   .topbar{
-    position:sticky; top:0; left:0; right:0; z-index:10000;
-    width:100vw; margin-left:calc(50% - 50vw);
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    z-index:10000;
     background:linear-gradient(180deg, rgba(12,18,40,.95), rgba(12,18,40,.92));
     backdrop-filter:saturate(140%) blur(6px);
     border-bottom:1px solid var(--border);
   }
- .top-logo{
-  height:42px;
-  width:auto;
-  display:block;
-  filter:none;
-}
-/* Fix iOS PWA status bar overlap */
-@supports (padding: max(0px)) {
-  .topbar {
-    padding-top: env(safe-area-inset-top);
-  }
-}
-
-html[data-theme="dark"] .top-logo{
-  filter:brightness(2) invert(1);
-}
 
   html[data-theme="light"] .topbar{
-    background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,247,252,.92));
+    background:linear-gradient(
+      180deg,
+      rgba(255,255,255,.96),
+      rgba(245,247,252,.96)
+    );
   }
-  .toprow{
-    width:100%; max-width:1500px; margin:0 auto; padding:10px 12px;
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap; min-width:0;
-  }
-  .brand{display:flex; align-items:center; gap:10px; min-width:180px; flex:1 1 auto;}
-  .brand h1{font-size:1.05rem; line-height:1.2; white-space:nowrap;}
-  .tabs{
-    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; flex:2 1 50%;
-  }
-  .tabs::-webkit-scrollbar{display:none}
-  .tab{padding:8px 14px; border-radius:999px; background:rgba(127,127,127,.12); cursor:pointer; user-select:none; transition:all .2s; white-space:nowrap;}
-  .tab.active{background:linear-gradient(180deg, var(--accent), #1d4ed8); color:#fff; box-shadow:0 6px 20px rgba(59,130,246,.35);}
 
-  /* Mode pill */
-  .mode-toggle{
-    display:inline-flex; align-items:center; gap:8px;
-    background:linear-gradient(180deg, #334155, #1f2937); color:#fff;
-    padding:8px 12px; border-radius:999px; cursor:pointer; user-select:none;
-    border:1px solid var(--border); box-shadow:0 8px 24px var(--btn-shadow);
+  .top-logo{
+    height:40px;
+    display:block;
+    transition:filter .2s;
+  }
+
+  html[data-theme="dark"] .top-logo{
+    filter:brightness(0) invert(1);
+  }
+
+  html[data-theme="light"] .top-logo{
+    filter:none;
+  }
+
+  @media (min-width: 769px){
+    .topbar{
+      width:100vw;
+      margin-left:calc(50% - 50vw);
+    }
+  }
+
+  @supports (padding: max(0px)) {
+    .topbar {
+      padding-top: env(safe-area-inset-top);
+    }
+  }
+
+  .toprow{
+    width:100%;
+    margin:0;
+    max-width:none;
+    padding:0 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:nowrap;
+    min-width:0;
+  }
+
+  .top-main-row{
+    justify-content:space-between;
+    padding-top:8px;
+    padding-bottom:8px;
+  }
+
+  .top-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:0 0 auto;
+    width:48px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    min-width:0;
     flex:0 0 auto;
   }
-  html[data-theme="light"] .mode-toggle{ background:linear-gradient(180deg, #e2e8f0, #cbd5e1); color:#0b1227; }
-  .mode-dot{width:18px; height:18px; border-radius:999px; background:#111827;}
-  html[data-theme="light"] .mode-dot{ background:#fff; }
-  .mode-label{font-weight:700; font-size:.9rem;}
 
-  /* Speaker icon button */
-  .icon-btn{
-    width:40px; height:40px; border-radius:999px; border:1px solid var(--border);
-    background:linear-gradient(180deg, #334155, #1f2937); color:#fff; cursor:pointer;
-    display:inline-flex; align-items:center; justify-content:center;
-    box-shadow:0 8px 24px rgba(0,0,0,.25); flex:0 0 auto;
+  .top-main-spacer{
+    width:48px;
+    flex:0 0 auto;
   }
-  html[data-theme="light"] .icon-btn{ background:linear-gradient(180deg, #e2e8f0, #cbd5e1); color:#0b1227; }
+
+  /* Tabs kept in DOM for JS but hidden visually */
+  .tabs{
+    display:none;
+  }
+  .tab{
+    padding:8px 14px;
+    border-radius:999px;
+    background:rgba(127,127,127,.12);
+    cursor:pointer;
+    user-select:none;
+    transition:all .2s;
+    white-space:nowrap;
+  }
+  .tab.active{
+    background:linear-gradient(180deg, var(--accent), #1d4ed8);
+    color:#fff;
+    box-shadow:0 6px 20px rgba(59,130,246,.35);
+  }
+
+  .icon-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:40px;
+    height:40px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:linear-gradient(180deg, #334155, #1f2937);
+    color:#fff;
+    cursor:pointer;
+    user-select:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+    padding:0;
+    flex:0 0 auto;
+  }
+
+  html[data-theme="light"] .icon-btn{
+    background:linear-gradient(180deg, #e2e8f0, #cbd5e1);
+    color:#0b1227;
+  }
+
+  /* Dropdown: top-left under burger */
+  .top-menu{
+    position:fixed;
+    left:12px;
+    top:70px;
+    z-index:9999;
+    display:none;
+  }
+  .top-menu.show{
+    display:block;
+  }
+
+  .top-menu-inner{
+    min-width:240px;
+    max-width:270px;
+    background:radial-gradient(circle at top left, rgba(59,130,246,.35), transparent 55%),
+               linear-gradient(180deg, rgba(12,18,40,.98), rgba(12,18,40,.97));
+    border:1px solid rgba(148,163,184,.7);
+    border-radius:16px;
+    box-shadow:0 14px 40px rgba(0,0,0,.75);
+  }
+  html[data-theme="light"] .top-menu-inner{
+    background:radial-gradient(circle at top left, rgba(37,99,235,.18), transparent 55%),
+               linear-gradient(180deg, rgba(255,255,255,.98), rgba(245,247,252,.98));
+    border-color:rgba(148,163,184,.7);
+    box-shadow:0 10px 30px rgba(15,23,42,.10);
+  }
+
+  /* New menu v2 layout */
+  .menu-v2{
+    padding:10px 12px 12px;
+  }
+
+  .menu-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:4px 0;
+  }
+
+  /* Tabs row */
+  .menu-row-tabs{
+    justify-content:space-between;
+    background:rgba(15,23,42,.9);
+    border-radius:999px;
+    padding:4px;
+    margin-bottom:6px;
+    box-shadow:0 8px 22px rgba(15,23,42,.8);
+  }
+  html[data-theme="light"] .menu-row-tabs{
+    background:rgba(148,163,184,.25);
+    box-shadow:0 6px 16px rgba(15,23,42,.25);
+  }
+
+  .menu-tab{
+    flex:1;
+    border:none;
+    border-radius:999px;
+    padding:6px 10px;
+    font-size:.82rem;
+    font-weight:700;
+    cursor:pointer;
+    background:transparent;
+    color:var(--muted);
+    transition:background .18s ease, color .18s ease, box-shadow .18s ease;
+  }
+  .menu-tab.active{
+    background:linear-gradient(180deg, var(--accent), #1d4ed8);
+    color:#fff;
+    box-shadow:0 0 0 2px rgba(59,130,246,.35) inset;
+  }
+
+  /* Action chips row - vertical list, bigger gap under tabs */
+  .menu-row-actions{
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:flex-start;
+    gap:6px;
+    margin-top:14px;
+    padding-top:10px;
+    border-top:1px solid rgba(148,163,184,.35);
+  }
+
+  .menu-chip{
+    display:inline-flex;
+    align-items:center;
+    justify-content:space-between;
+    border:none;
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:.8rem;
+    font-weight:600;
+    cursor:pointer;
+    background:linear-gradient(180deg, #334155, #1f2937);
+    color:#fff;
+    box-shadow:0 5px 16px rgba(0,0,0,.35);
+    white-space:nowrap;
+  }
+  html[data-theme="light"] .menu-chip{
+    background:linear-gradient(180deg, #e2e8f0, #cbd5e1);
+    color:#0b1227;
+  }
+  .menu-chip span.label{
+    flex:1;
+    text-align:left;
+  }
+  .menu-chip span.icon{
+    margin-left:6px;
+  }
+
+  /* Voice button text using pseudo-element, so other JS that edits innerHTML will not break it */
+  #voiceBtn::before{
+    content:"Mute";
+    margin-right:6px;
+  }
+  #voiceBtn.is-muted::before{
+    content:"Unmute";
+  }
+
+  /* Theme row */
+  .menu-row-theme{
+    justify-content:space-between;
+    margin-top:12px;
+  }
+  .menu-theme-label{
+    font-size:.82rem;
+    color:var(--muted);
+  }
+
+  /* Light-mode slider switch */
+  .mode-switch{
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    justify-content:flex-start;
+    width:50px;
+    height:26px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:linear-gradient(180deg, #1e293b, #020617);
+    box-shadow:0 5px 16px rgba(0,0,0,.45);
+    padding:0 2px;
+    cursor:pointer;
+  }
+  .mode-switch-knob{
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:20px;
+    height:20px;
+    border-radius:999px;
+    background:#f9fafb;
+    box-shadow:0 0 4px rgba(0,0,0,.5);
+    transition:transform .18s ease-out, background .18s ease-out;
+  }
+  html[data-theme="light"] .mode-switch{
+    background:linear-gradient(180deg, #e5e7eb, #cbd5e1);
+    box-shadow:0 4px 10px rgba(15,23,42,.25);
+  }
+  html[data-theme="light"] .mode-switch .mode-switch-knob{
+    transform:translateX(22px);
+    background:#020617;
+  }
+
+  /* Pill buttons (used for inline edit toggle) */
+  .pill-btn{
+    border:none;
+    border-radius:999px;
+    padding:6px 11px;
+    font-size:.82rem;
+    font-weight:700;
+    cursor:pointer;
+    background:linear-gradient(180deg, #334155, #1f2937);
+    color:#fff;
+    box-shadow:0 5px 16px rgba(0,0,0,.35);
+    white-space:nowrap;
+    touch-action:manipulation;
+  }
+  html[data-theme="light"] .pill-btn{
+    background:linear-gradient(180deg, #e2e8f0, #cbd5e1);
+    color:#0b1227;
+    box-shadow:0 4px 12px rgba(15,23,42,.18);
+  }
+  .pill-btn.edit-on{
+    background:linear-gradient(180deg, var(--accent-2), #15803d);
+    box-shadow:0 0 0 2px rgba(22,163,74,.4) inset;
+  }
+
+  @media (max-width: 720px){
+    .toprow{
+      padding:0 8px;
+      gap:6px;
+    }
+    .top-main-row{
+      padding-top:6px;
+      padding-bottom:6px;
+    }
+    .top-logo{
+      height:34px;
+    }
+    .icon-btn{
+      width:36px;
+      height:36px;
+    }
+    .top-menu{
+      left:8px;
+      top:64px;
+    }
+  }
 
   .panel{display:none;} .panel.active{display:block;}
 
@@ -119,9 +424,8 @@ html[data-theme="dark"] .top-logo{
     border:1px solid var(--border);
     background:var(--chip);
     color:var(--text);
-    font-size:.95rem;
+    font-size:1rem;
   }
-
   button{
     border:none; border-radius:999px; padding:10px 16px; font-weight:700; cursor:pointer; color:#fff;
     background:linear-gradient(180deg, var(--btn-bg), var(--btn-bg2)); box-shadow:0 8px 24px var(--btn-shadow);
@@ -132,27 +436,23 @@ html[data-theme="dark"] .top-logo{
   button.warn{background:linear-gradient(180deg, #ef4444, #b91c1c);}
   .small{font-size:.85rem; color:var(--muted);} .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
   .num{font-variant-numeric: tabular-nums; text-align:right;}
-  
+
   button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  filter: grayscale(0.4);
-}
-/* Softer, cleaner placeholder style */
-input::placeholder,
-textarea::placeholder {
-  color: var(--muted);
-  opacity: 0.45; /* more subtle */
-}
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
 
-/* WebKit/iOS compatibility */
-input::-webkit-input-placeholder,
-textarea::-webkit-input-placeholder {
-  color: var(--muted);
-  opacity: 0.45;
-}
-
-
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--muted);
+    opacity: 0.45;
+  }
+  input::-webkit-input-placeholder,
+  textarea::-webkit-input-placeholder {
+    color: var(--muted);
+    opacity: 0.45;
+  }
 
   .progress{height:18px; background:var(--chip); border:1px solid var(--border); border-radius:999px; overflow:hidden; margin-top:8px;}
   .bar{height:100%; width:0%; background:linear-gradient(90deg, var(--accent-2), #16a34a, #4ade80); transition:width .25s;}
@@ -209,13 +509,11 @@ textarea::-webkit-input-placeholder {
   .order-item .btns{display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:55vw;}
   .order-item .btns button{ padding:8px 12px; white-space:nowrap; }
 
-  /* Smaller buttons for photo controls */
   .order-item .btns button.player-photo-btn,
   .order-item .btns button.player-photo-delete-btn{
     padding:6px 10px;
     font-size:.85rem;
   }
-  /* Smaller edit/delete icons next to player name */
   .order-item .name button{
     padding:6px 10px;
     font-size:.85rem;
@@ -234,13 +532,10 @@ textarea::-webkit-input-placeholder {
     text-transform:uppercase;
     letter-spacing:.05em;
   }
-
-  /* Line PLAYER header up above the name text (avatar + gap) */
   .tv-grid thead th.tv-player-head{
     text-align:left;
-    padding-left:54px; /* 8 cell padding + 36 avatar + 10 gap */
+    padding-left:54px;
   }
-
   .tv-grid tbody tr{background:linear-gradient(180deg, var(--row), var(--row2)); border:1px solid var(--border);}
   .tv-grid td{padding:10px 8px;}
   .tv-rank{width:50px; text-align:center; font-weight:800; font-size:1.1rem;}
@@ -262,8 +557,7 @@ textarea::-webkit-input-placeholder {
 
   @media (max-width:1100px){ .grid{grid-template-columns:1fr;} }
   @media (max-width:600px){
-    .container{padding:12px;}
-    .tab{padding:7px 12px;}
+    .container{padding:8px 12px 12px;}
     .seg{padding:12px 8px; font-size:1rem;}
     .seg-grid{gap:6px}
     .bulls-row{gap:6px}
@@ -271,7 +565,6 @@ textarea::-webkit-input-placeholder {
     .brand h1{font-size:1rem;}
   }
 
-  /* Board list layout */
   #boardList {
     display:flex;
     flex-direction:column;
@@ -282,82 +575,248 @@ textarea::-webkit-input-placeholder {
     align-items:center;
     gap:8px;
   }
-#big180 {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(1); /* <- was scale(0.5) */
-  font-size: 10rem;
-  font-weight: 900;
-  color: #ff2020;
-  /* Strong glow all the time */
-  text-shadow:
-    0 0 40px #ff4040,
-    0 0 80px #ff0000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease; /* <- drop transform from the transition */
-  z-index: 999999;
-}
-@keyframes wobble180 {
-  0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-  20%  { transform: translate(-50%, -50%) scale(1.05) rotate(-4deg); }
-  50%  { transform: translate(-50%, -50%) scale(1.1) rotate(4deg); }
-  80%  { transform: translate(-50%, -50%) scale(1.05) rotate(-3deg); }
-  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-}
 
-
-@keyframes pulseGlow {
-  /* Same glow at start and end so no visual change */
-  0%,
-  100% {
+  #big180 {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    font-size: 10rem;
+    font-weight: 900;
+    color: #ff2020;
     text-shadow:
       0 0 40px #ff4040,
       0 0 80px #ff0000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 999999;
   }
-}
+  @keyframes wobble180 {
+    0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+    20%  { transform: translate(-50%, -50%) scale(1.05) rotate(-4deg); }
+    50%  { transform: translate(-50%, -50%) scale(1.1) rotate(4deg); }
+    80%  { transform: translate(-50%, -50%) scale(1.05) rotate(-3deg); }
+    100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  }
+  @keyframes pulseGlow {
+    0%,100% {
+      text-shadow:
+        0 0 40px #ff4040,
+        0 0 80px #ff0000;
+    }
+  }
+  #big180mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.40);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 99998;
+  }
 
-#big180mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.40); /* dim behind the 180 */
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  z-index: 99998;               /* just under #big180 which is 99999 */
-}
+  /* Inline leaderboard edit mode hook */
+  [data-inline-leaderboard]{
+    position:relative;
+  }
+  .inline-edit-toggle-btn{
+    position:absolute;
+    right:10px;
+    top:10px;
+  }
+  .inline-leaderboard-scroll{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .inline-leaderboard-scroll table{
+    min-width:600px;
+  }
 
+  /* Hide last two columns (ADD + ACTIONS) by default on inline leaderboard */
+  [data-inline-leaderboard] thead th:nth-last-child(-n+2),
+  [data-inline-leaderboard] tbody td:nth-last-child(-n+2){
+    display:none;
+  }
+  [data-inline-leaderboard].inline-leaderboard-edit-mode thead th:nth-last-child(-n+2),
+  [data-inline-leaderboard].inline-leaderboard-edit-mode tbody td:nth-last-child(-n+2){
+    display:table-cell;
+  }
 </style>
 </head>
 <body>
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="toprow">
+  <div class="toprow top-main-row">
+    <div class="top-actions">
+      <button id="menuToggle" class="icon-btn" title="Menu" aria-label="Menu">☰</button>
+    </div>
+
     <div class="brand">
-  <img src="media/images/logo.png" alt="Darts Marathon" class="top-logo">
-</div>
-    <div class="tabs">
-      <div class="tab" data-tab="setup">Setup</div>
-      <div class="tab active" data-tab="scoring">Scoring</div>
-      <div class="tab" data-tab="leaderboard">Leaderboard</div>
+      <img src="media/images/logo.png" alt="Darts Marathon" class="top-logo">
     </div>
 
-        <!-- Speaker mute/unmute -->
-    <button id="voiceBtn" class="icon-btn" title="Toggle voice" aria-label="Toggle voice">🔊</button>
+    <div class="top-main-spacer"></div>
+  </div>
 
-    <!-- Refresh page -->
-    <button id="refreshBtn" class="icon-btn" title="Refresh page" aria-label="Refresh page">🔄</button>
+  <!-- Hidden tabs (logic only, no visual) -->
+  <div class="tabs">
+    <div class="tab active" data-tab="scoring">Scoring</div>
+    <div class="tab" data-tab="leaderboard">Leaderboard</div>
+  </div>
 
-    <!-- Theme toggle -->
-    <div id="modeToggle" class="mode-toggle" title="Toggle theme">
-      <div class="mode-dot"></div><span class="mode-label" id="modeLabel">Dark</span>
+  <!-- New dropdown menu -->
+  <div id="topMenu" class="top-menu" aria-hidden="true">
+    <div class="top-menu-inner menu-v2">
+      <!-- Tabs -->
+      <div class="menu-row menu-row-tabs">
+        <button id="menuScoring" class="menu-tab active" type="button">Scoring</button>
+        <button id="menuLeaderboard" class="menu-tab" type="button">Leaderboard</button>
+      </div>
+
+      <!-- Quick actions, one per line -->
+      <div class="menu-row menu-row-actions">
+        <button id="settingsBtn" class="menu-chip" type="button">
+          <span class="label">Setup</span>
+          <span class="icon">⚙️</span>
+        </button>
+        <button id="refreshBtn" class="menu-chip" type="button">
+          <span class="label">Refresh</span>
+          <span class="icon">🔄</span>
+        </button>
+        <button id="voiceBtn" class="menu-chip" type="button">
+          <span class="icon">🔊</span>
+        </button>
+      </div>
+
+      <!-- Theme -->
+      <div class="menu-row menu-row-theme">
+        <span class="menu-theme-label">Light mode</span>
+        <button id="modeToggle" class="mode-switch" title="Toggle theme" type="button">
+          <span class="mode-switch-knob"></span>
+        </button>
+      </div>
     </div>
-
   </div>
 </div>
 
+<script>
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+
+    /* Header menu */
+    const menuToggle      = document.getElementById('menuToggle');
+    const topMenu         = document.getElementById('topMenu');
+    const menuScoring     = document.getElementById('menuScoring');
+    const menuLeaderboard = document.getElementById('menuLeaderboard');
+    const scoringTab      = document.querySelector('.tab[data-tab="scoring"]');
+    const leaderboardTab  = document.querySelector('.tab[data-tab="leaderboard"]');
+
+    function syncMenuTabs(){
+      if(!menuScoring || !menuLeaderboard || !scoringTab || !leaderboardTab) return;
+      const scoringActive = scoringTab.classList.contains('active');
+      menuScoring.classList.toggle('active', scoringActive);
+      menuLeaderboard.classList.toggle('active', !scoringActive);
+    }
+
+    if(menuToggle && topMenu){
+      menuToggle.addEventListener('click', function(e){
+        e.stopPropagation();
+        topMenu.classList.toggle('show');
+        topMenu.setAttribute('aria-hidden', topMenu.classList.contains('show') ? 'false' : 'true');
+      });
+
+      document.addEventListener('click', function(e){
+        if(!topMenu.contains(e.target) && !menuToggle.contains(e.target)){
+          topMenu.classList.remove('show');
+          topMenu.setAttribute('aria-hidden', 'true');
+        }
+      });
+    }
+
+    if(menuScoring && scoringTab){
+      menuScoring.addEventListener('click', function(){
+        scoringTab.click();
+        syncMenuTabs();
+        topMenu.classList.remove('show');
+        topMenu.setAttribute('aria-hidden', 'true');
+      });
+    }
+
+    if(menuLeaderboard && leaderboardTab){
+      menuLeaderboard.addEventListener('click', function(){
+        leaderboardTab.click();
+        syncMenuTabs();
+        topMenu.classList.remove('show');
+        topMenu.setAttribute('aria-hidden', 'true');
+      });
+    }
+
+    if(scoringTab){
+      scoringTab.addEventListener('click', syncMenuTabs);
+    }
+    if(leaderboardTab){
+      leaderboardTab.addEventListener('click', syncMenuTabs);
+    }
+
+    syncMenuTabs(); // initial
+
+    /* Mute / Unmute label toggle using class only */
+    const voiceBtn = document.getElementById('voiceBtn');
+    if (voiceBtn) {
+      voiceBtn.addEventListener('click', function () {
+        voiceBtn.classList.toggle('is-muted');
+      });
+    }
+
+    /* Inline leaderboard edit mode:
+       - Automatically finds the inline leaderboard card whose header starts with "Leaderboard".
+       - Wraps its table in a scroll container.
+       - Uses CSS nth-last-child to hide/show last two columns.
+    */
+    let inlineLb = null;
+    const cards = document.querySelectorAll('.card');
+    for(const card of cards){
+      const heading = card.querySelector('h2,h3,h4');
+      if(heading && heading.textContent.trim().toLowerCase().startsWith('leaderboard')){
+        inlineLb = card;
+        break;
+      }
+    }
+
+    if(inlineLb){
+      inlineLb.setAttribute('data-inline-leaderboard','1');
+
+      const table = inlineLb.querySelector('table');
+      if(table && !table.parentElement.classList.contains('inline-leaderboard-scroll')){
+        const wrap = document.createElement('div');
+        wrap.className = 'inline-leaderboard-scroll';
+        inlineLb.insertBefore(wrap, table);
+        wrap.appendChild(table);
+      }
+
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'pill-btn inline-edit-toggle-btn';
+      editBtn.textContent = 'Edit';
+      editBtn.setAttribute('aria-pressed', 'false');
+      inlineLb.appendChild(editBtn);
+
+      editBtn.addEventListener('click', function(){
+        const on = inlineLb.classList.toggle('inline-leaderboard-edit-mode');
+        editBtn.classList.toggle('edit-on', on);
+        editBtn.textContent = on ? 'Editing' : 'Edit';
+        editBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+
+  });
+})();
+</script>
+
+<div class="container">
+        
 <div class="container">
 
   <!-- Setup -->
@@ -512,7 +971,7 @@ textarea::-webkit-input-placeholder {
 <!-- Password modal -->
 <div id="pwMask" class="mask" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
-    <h3 id="pwTitle">Enter setup password</h3>
+    <h3 id="pwTitle">Enter settings password</h3>
     <div class="modal-row">
       <input id="pwInput" type="password" autocomplete="current-password" placeholder="Password"
              style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--chip); color:var(--text);">
@@ -579,23 +1038,36 @@ let unsubscribeEvent = null;
 let isApplyingRemote = false;
 let cloudConnected = false; // true only once Firestore sends us data
 
-
 /* Theme (defaults to dark) */
-const THEME_KEY='dm_theme';
+const THEME_KEY = 'dm_theme';
 let stored = localStorage.getItem(THEME_KEY);
-if(!stored){ localStorage.setItem(THEME_KEY,'dark'); stored='dark'; }
+if (!stored){
+  localStorage.setItem(THEME_KEY, 'dark');
+  stored = 'dark';
+}
+
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
-  $('#modeLabel').textContent = t==='light' ? 'Light' : 'Dark';
+  // no label to update any more
 }
+
 applyTheme(stored);
-$('#modeToggle').onclick = ()=>{
-  const t = (document.documentElement.getAttribute('data-theme')==='dark') ? 'light':'dark';
+
+$('#modeToggle').onclick = () => {
+  const t = (document.documentElement.getAttribute('data-theme') === 'dark')
+    ? 'light'
+    : 'dark';
   localStorage.setItem(THEME_KEY, t);
   applyTheme(t);
 };
 
+// Settings cog opens setup (with password modal)
+$('#settingsBtn').onclick = () => {
+  openPasswordModal(null); // same behaviour as clicking Setup tab
+};
+
 /* Voice (per device) */
+
 const VOX_KEY='dm_voice_on';
 let voiceOn = JSON.parse(localStorage.getItem(VOX_KEY) ?? 'true');
 function updateVoiceBtn(){
