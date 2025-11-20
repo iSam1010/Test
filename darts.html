@@ -2085,24 +2085,32 @@ function renderPlayers(){
   renderBoardCount();
 }
 
-
 function refreshThrowerSelect(){
   const pool = rosterIds();
-  const prev = currentThrowerId;
-  scorePlayerSel.innerHTML='<option value="">Select player…</option>';
+  // Only keep the previous thrower if they are still valid
+  const prev = (currentThrowerId && pool.includes(currentThrowerId))
+    ? currentThrowerId
+    : null;
+
+  scorePlayerSel.innerHTML = '<option value="">Select player…</option>';
   pool.forEach(id=>{
-    const opt=document.createElement('option');
-    opt.value=id;
-    opt.textContent=players[id].name;
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = players[id].name;
     scorePlayerSel.appendChild(opt);
   });
-  if(prev && pool.includes(prev)){
+
+  if (prev){
+    // Restore the same thrower if still valid
     scorePlayerSel.value = prev;
-  }else{
-    currentThrowerId = pool[0] || null;
-    if(currentThrowerId) scorePlayerSel.value = currentThrowerId;
+    currentThrowerId = prev;
+  } else {
+    // Force the placeholder and clear thrower
+    scorePlayerSel.value = '';
+    currentThrowerId = null;
   }
 }
+
 
 function buildTVHeader(){
   const base = [
@@ -2537,11 +2545,10 @@ undoVisitBtn.onclick = () => {
 
 
 submitBtn.onclick = () => {
-  const pool = rosterIds();
-  const pid = currentThrowerId || pool[0];
+  const pid = currentThrowerId;
 
   if (!pid) {
-    nudge('Pick a player');
+    nudge('Pick a player', 'error');
     return;
   }
 
@@ -2628,15 +2635,15 @@ function init(){
   renderVisit();
   renderPlayers();            // players is empty until an event is joined
   updateBars();
-  if(!currentThrowerId){
-    const first = rosterIds()[0];
-    if(first) setThrower(first);
-  }
+
+  // Always start with "Select player…" until the user chooses one
+  currentThrowerId = null;
+  refreshThrowerSelect();
+
   syncToggle();
   renderBoardCount();
   updateModeBadge();          // start in "not connected" until they join an event
 }
-
 init();
 </script>
 <div id="big180mask"></div>
